@@ -319,6 +319,7 @@ export enum TransportProtocol {
   JSONRPC = "JSONRPC", // JSON-RPC 2.0 over HTTP (mandatory)
   GRPC = "GRPC", // gRPC over HTTP/2 (optional)
   HTTP_JSON = "HTTP+JSON", // REST-style HTTP with JSON (optional)
+  SRPC = "SRPC", // Slim RPC extension transport (optional)
 }
 // --8<-- [end:TransportProtocol]
 
