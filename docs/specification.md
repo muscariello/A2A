@@ -100,6 +100,52 @@ Agents **MAY** support JSON-RPC 2.0 transport. If implemented, it **MUST** confo
 
 Agents **MAY** support gRPC transport. If implemented, it **MUST** conform to these requirements:
 
+#### 3.2.3. SlimRPC (SRPC) Transport
+
+SlimRPC (SRPC) is a high-performance, streaming transport for A2A, designed for use with Protocol Buffers. It is not available for JSON-RPC or REST.
+
+**Features:**
+ - Generates client stubs and server servicers from `.proto` files.
+- Supports all gRPC streaming patterns: unary-unary, unary-stream, stream-unary, and stream-stream.
+- Compatible with both `protoc` and `buf` build systems.
+- Automatic import resolution for Protocol Buffer dependencies.
+
+**Required Parameters:**
+- `endpoint`: The URL of the SRPC service.
+- `tls`: TLS configuration (e.g., certificates, `insecure` flag for development).
+- `shared_secret`: (Optional) Shared secret for channel authentication.
+- `types_import`: (For codegen) Custom import path for protobuf types if needed.
+
+**Code Generation Example:**
+```sh
+protoc \
+  --plugin=~/.cargo/bin/protoc-slimrpc-plugin \
+  --slimrpc_out=. \
+  --python_out=. \
+  example.proto
+```
+Or with custom types import:
+```sh
+protoc \
+  --plugin=~/.cargo/bin/protoc-slimrpc-plugin \
+  --slimrpc_out=types_import="from a2a.grpc import a2a_pb2 as a2a__pb2":. \
+  example.proto
+```
+
+**Agent Card Declaration Example:**
+```json
+{
+  "url": "https://example.com/srpc",
+  "transport": "SRPC"
+}
+```
+
+**Security:**
+SRPC endpoints must support TLS and/or shared secret authentication, as declared in the Agent Card.
+
+**Note:**
+SlimRPC is only available for gRPC/Protobuf-based transports and is not supported for JSON-RPC or REST.
+
 - **Protocol Definition**: **MUST** use the normative Protocol Buffers definition in [`specification/grpc/a2a.proto`](https://github.com/a2aproject/A2A/blob/main/specification/grpc/a2a.proto).
 - **Message Serialization**: **MUST** use Protocol Buffers version 3 for message serialization.
 - **Service Definition**: **MUST** implement the `A2AService` gRPC service as defined in the proto file.
@@ -227,19 +273,19 @@ Extension methods **MUST** be clearly documented and **MUST NOT** conflict with 
 
 For quick reference, the following table summarizes the method mappings across all transports:
 
-| JSON-RPC Method | gRPC Method | REST Endpoint | Description |
-|:----------------|:------------|:--------------|:------------|
-| `message/send` | `SendMessage` | `POST /v1/message:send` | Send message to agent |
-| `message/stream` | `SendStreamingMessage` | `POST /v1/message:stream` | Send message with streaming |
-| `tasks/get` | `GetTask` | `GET /v1/tasks/{id}` | Get task status |
-| `tasks/list` | `ListTask` | `GET /v1/tasks` | List tasks (gRPC/REST only) |
-| `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` | Cancel task |
-| `tasks/resubscribe` | `TaskSubscription` | `POST /v1/tasks/{id}:subscribe` | Resume task streaming |
-| `tasks/pushNotificationConfig/set` | `CreateTaskPushNotification` | `POST /v1/tasks/{id}/pushNotificationConfigs` | Set push notification config |
-| `tasks/pushNotificationConfig/get` | `GetTaskPushNotification` | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` | Get push notification config |
-| `tasks/pushNotificationConfig/list` | `ListTaskPushNotification` | `GET /v1/tasks/{id}/pushNotificationConfigs` | List push notification configs |
+| JSON-RPC Method                       | gRPC Method                  | REST Endpoint                                              | Description                     |
+| :------------------------------------ | :--------------------------- | :--------------------------------------------------------- | :------------------------------ |
+| `message/send`                        | `SendMessage`                | `POST /v1/message:send`                                    | Send message to agent           |
+| `message/stream`                      | `SendStreamingMessage`       | `POST /v1/message:stream`                                  | Send message with streaming     |
+| `tasks/get`                           | `GetTask`                    | `GET /v1/tasks/{id}`                                       | Get task status                 |
+| `tasks/list`                          | `ListTask`                   | `GET /v1/tasks`                                            | List tasks (gRPC/REST only)     |
+| `tasks/cancel`                        | `CancelTask`                 | `POST /v1/tasks/{id}:cancel`                               | Cancel task                     |
+| `tasks/resubscribe`                   | `TaskSubscription`           | `POST /v1/tasks/{id}:subscribe`                            | Resume task streaming           |
+| `tasks/pushNotificationConfig/set`    | `CreateTaskPushNotification` | `POST /v1/tasks/{id}/pushNotificationConfigs`              | Set push notification config    |
+| `tasks/pushNotificationConfig/get`    | `GetTaskPushNotification`    | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`    | Get push notification config    |
+| `tasks/pushNotificationConfig/list`   | `ListTaskPushNotification`   | `GET /v1/tasks/{id}/pushNotificationConfigs`               | List push notification configs  |
 | `tasks/pushNotificationConfig/delete` | `DeleteTaskPushNotification` | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` | Delete push notification config |
-| `agent/getAuthenticatedExtendedCard` | `GetAgentCard` | `GET /v1/card` | Get authenticated agent card |
+| `agent/getAuthenticatedExtendedCard`  | `GetAgentCard`               | `GET /v1/card`                                             | Get authenticated agent card    |
 
 ## 4. Authentication and Authorization
 
@@ -1103,15 +1149,15 @@ These are standard codes defined by the JSON-RPC 2.0 specification.
 
 These are custom error codes defined within the JSON-RPC server error range (`-32000` to `-32099`) to provide more specific feedback about A2A-related issues. Servers **SHOULD** use these codes where applicable.
 
-| Code     | Error Name (Conceptual)             | Typical `message` string           | Description                                                                                                                                                                                                                          |
-| :------- | :---------------------------------- | :--------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-32001` | `TaskNotFoundError`                 | Task not found                     | The specified task `id` does not correspond to an existing or active task. It might be invalid, expired, or already completed and purged.                                                                                            |
-| `-32002` | `TaskNotCancelableError`            | Task cannot be canceled            | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`).                                                                    |
-| `-32003` | `PushNotificationNotSupportedError` | Push Notification is not supported | Client attempted to use push notification features (e.g., `tasks/pushNotificationConfig/set`) but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`).                              |
-| `-32004` | `UnsupportedOperationError`         | This operation is not supported    | The requested operation or a specific aspect of it (perhaps implied by parameters) is not supported by this server agent implementation. Broader than just method not found.                                                         |
-| `-32005` | `ContentTypeNotSupportedError`      | Incompatible content types         | A [Media Type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types) provided in the request's `message.parts` (or implied for an artifact) is not supported by the agent or the specific skill being invoked. |
-| `-32006` | `InvalidAgentResponseError`         | Invalid agent response type        | Agent generated an invalid response for the requested method                                                                                                                                                                         |
-| `-32007` | `AuthenticatedExtendedCardNotConfiguredError`         | Authenticated Extended Card not configured        | The agent does not have an Authenticated Extended Card configured.|
+| Code     | Error Name (Conceptual)                       | Typical `message` string                   | Description                                                                                                                                                                                                                           |
+| :------- | :-------------------------------------------- | :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-32001` | `TaskNotFoundError`                           | Task not found                             | The specified task `id` does not correspond to an existing or active task. It might be invalid, expired, or already completed and purged.                                                                                             |
+| `-32002` | `TaskNotCancelableError`                      | Task cannot be canceled                    | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`).                                                                     |
+| `-32003` | `PushNotificationNotSupportedError`           | Push Notification is not supported         | Client attempted to use push notification features (e.g., `tasks/pushNotificationConfig/set`) but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`).                               |
+| `-32004` | `UnsupportedOperationError`                   | This operation is not supported            | The requested operation or a specific aspect of it (perhaps implied by parameters) is not supported by this server agent implementation. Broader than just method not found.                                                          |
+| `-32005` | `ContentTypeNotSupportedError`                | Incompatible content types                 | A [Media Type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types) provided in the request's `message.parts` (or implied for an artifact) is not supported by the agent or the specific skill being invoked. |
+| `-32006` | `InvalidAgentResponseError`                   | Invalid agent response type                | Agent generated an invalid response for the requested method                                                                                                                                                                          |
+| `-32007` | `AuthenticatedExtendedCardNotConfiguredError` | Authenticated Extended Card not configured | The agent does not have an Authenticated Extended Card configured.                                                                                                                                                                    |
 
 Servers MAY define additional error codes within the `-32000` to `-32099` range for more specific scenarios not covered above, but they **SHOULD** document these clearly. The `data` field of the `JSONRPCError` object can be used to provide more structured details for any error.
 
