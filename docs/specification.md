@@ -101,7 +101,11 @@ Agents **MAY** support JSON-RPC 2.0 transport. If implemented, it **MUST** confo
 Agents **MAY** support gRPC transport. If implemented, it **MUST** conform to these requirements:
 
 
+
 #### 3.2.3. SlimRPC (SRPC) Agent Group Messaging Protocol
+
+SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use with Protocol Buffers. It enables multi-agent, group, or channel-based messaging and coordination between agents, with end-to-end encryption using MLS (Message Layer Security). For practical integration details and examples, see section 3.2.5.
+#### 3.2.5. SLIM (SlimRPC) Transport Extension
 
 SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use with Protocol Buffers. It enables multi-agent, group, or channel-based messaging and coordination between agents, with end-to-end encryption using MLS (Message Layer Security).
 
