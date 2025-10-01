@@ -100,37 +100,22 @@ Agents **MAY** support JSON-RPC 2.0 transport. If implemented, it **MUST** confo
 
 Agents **MAY** support gRPC transport. If implemented, it **MUST** conform to these requirements:
 
-#### 3.2.3. SlimRPC (SRPC) Transport
+#### 3.2.3. SlimRPC (SRPC) Agent Group Messaging Protocol
 
-SlimRPC (SRPC) is a high-performance, streaming transport for A2A, designed for use with Protocol Buffers. It is not available for JSON-RPC or REST.
+SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use with Protocol Buffers. It enables multi-agent, group, or channel-based messaging and coordination between agents. SRPC is not a transport layer or streaming protocol, but rather a protocol for agent-to-agent and multi-agent communication.
 
 **Features:**
- - Generates client stubs and server servicers from `.proto` files.
-- Supports all gRPC streaming patterns: unary-unary, unary-stream, stream-unary, and stream-stream.
-- Compatible with both `protoc` and `buf` build systems.
-- Automatic import resolution for Protocol Buffer dependencies.
+- Enables durable group messaging, channels, and multi-agent collaboration.
+- Supports agent-to-agent and agent-to-group communication semantics.
+- Provides MLS (Message Layer Security)-based message encryption between agents for end-to-end confidentiality and integrity.
+- Compatible with Protocol Buffers and can be integrated with gRPC-based systems.
+- Designed for extensibility and efficient coordination in agentic ecosystems.
 
 **Required Parameters:**
-- `endpoint`: The URL of the SRPC service.
+- `endpoint`: The URL of the SRPC group messaging service.
 - `tls`: TLS configuration (e.g., certificates, `insecure` flag for development).
 - `shared_secret`: (Optional) Shared secret for channel authentication.
 - `types_import`: (For codegen) Custom import path for protobuf types if needed.
-
-**Code Generation Example:**
-```sh
-protoc \
-  --plugin=~/.cargo/bin/protoc-slimrpc-plugin \
-  --slimrpc_out=. \
-  --python_out=. \
-  example.proto
-```
-Or with custom types import:
-```sh
-protoc \
-  --plugin=~/.cargo/bin/protoc-slimrpc-plugin \
-  --slimrpc_out=types_import="from a2a.grpc import a2a_pb2 as a2a__pb2":. \
-  example.proto
-```
 
 **Agent Card Declaration Example:**
 ```json
