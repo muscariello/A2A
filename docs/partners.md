@@ -5,10 +5,6 @@ if available) who are part of the A2A community and are helping build, codify,
 and adopt A2A as the standard protocol for AI agents to communicate and
 collaborate effectively with each other and with users.
 
-!!! note
-
-    If you're interested in becoming a partner of A2A and getting your listing added to or updated on this page, let us know by [submitting this form](https://goo.gle/a2a-partner-form), and we'll contact you soon!
-
 - [Accelirate Inc](https://www.accelirate.com)
 - [Accenture](https://www.accenture.com)
 - [Activeloop](https://www.activeloop.ai/)
@@ -76,6 +72,7 @@ collaborate effectively with each other and with users.
 - [Hellotars](https://hellotars.com)
 - [Hexaware](https://hexaware.com/)
 - [HUMAN](https://www.humansecurity.com/)
+- [IBM Research](https://lfaidata.foundation/communityblog/2025/08/29/acp-joins-forces-with-a2a-under-the-linux-foundations-lf-ai-data/)
 - [Incorta](https://www.incorta.com)
 - [Infinitus](https://www.infinitus.ai/)
 - [InfoSys](https://www.infosys.com)
