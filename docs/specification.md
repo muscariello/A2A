@@ -100,22 +100,65 @@ Agents **MAY** support JSON-RPC 2.0 transport. If implemented, it **MUST** confo
 
 Agents **MAY** support gRPC transport. If implemented, it **MUST** conform to these requirements:
 
+
 #### 3.2.3. SlimRPC (SRPC) Agent Group Messaging Protocol
 
-SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use with Protocol Buffers. It enables multi-agent, group, or channel-based messaging and coordination between agents. SRPC is not a transport layer or streaming protocol, but rather a protocol for agent-to-agent and multi-agent communication.
+SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use with Protocol Buffers. It enables multi-agent, group, or channel-based messaging and coordination between agents, with end-to-end encryption using MLS (Message Layer Security).
 
-**Features:**
-- Enables durable group messaging, channels, and multi-agent collaboration.
-- Supports agent-to-agent and agent-to-group communication semantics.
-- Provides MLS (Message Layer Security)-based message encryption between agents for end-to-end confidentiality and integrity.
-- Compatible with Protocol Buffers and can be integrated with gRPC-based systems.
-- Designed for extensibility and efficient coordination in agentic ecosystems.
+##### Practical Integration: Python (`slima2a`)
 
-**Required Parameters:**
-- `endpoint`: The URL of the SRPC group messaging service.
-- `tls`: TLS configuration (e.g., certificates, `insecure` flag for development).
-- `shared_secret`: (Optional) Shared secret for channel authentication.
-- `types_import`: (For codegen) Custom import path for protobuf types if needed.
+The [slima2a](https://github.com/agntcy/slim/tree/b064d0d1fce57c219f18e210770765f348c45fdd/data-plane/python/integrations/slima2a) Python package provides a native A2A integration on top of SLIM and SlimRPC. It uses the SLIM RPC compiler to generate code from the A2A proto file, enabling secure, group-based agent messaging.
+
+**Key Features:**
+- Durable group messaging, channels, and multi-agent collaboration
+- Agent-to-agent and agent-to-group communication semantics
+- End-to-end message encryption with MLS
+- Extensible and efficient for agentic ecosystems
+- Integrates with gRPC-based systems
+
+**How to Use (Python Example):**
+
+**Server Setup:**
+```python
+import srpc
+
+server = srpc.Server(
+  local="agntcy/demo/travel_planner_agent",
+  slim={
+    "endpoint": "http://localhost:46357",
+    "tls": {"insecure": True},
+  },
+  shared_secret="secret",  # Used for MLS
+)
+add_A2AServiceServicer_to_server(servicer, server)
+```
+
+**Client Setup:**
+```python
+def channel_factory(topic: str) -> srpc.Channel:
+  return srpc.Channel(
+    local="agntcy/demo/client",
+    remote=topic,
+    slim={
+      "endpoint": "http://localhost:46357",
+      "tls": {"insecure": True},
+    },
+    shared_secret="secret",
+  )
+
+client_config = ClientConfig(
+  supported_transports=["JSONRPC", "srpc"],
+  streaming=True,
+  srpc_channel_factory=channel_factory,
+)
+client_factory = ClientFactory(client_config)
+client_factory.register("srpc", SRPCTransport.create)
+agent_card = minimal_agent_card("agntcy/demo/travel_planner_agent", ["srpc"])
+client = client_factory.create(card=agent_card)
+```
+
+**Security:**
+- SRPC endpoints must support TLS and/or shared secret authentication (enabling MLS-based encryption).
 
 **Agent Card Declaration Example:**
 ```json
@@ -125,19 +168,20 @@ SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use wi
 }
 ```
 
-**Security:**
-SRPC endpoints must support TLS and/or shared secret authentication, as declared in the Agent Card.
+**Notes:**
+- SlimRPC is only available for gRPC/Protobuf-based transports and is not supported for JSON-RPC or REST.
+- Protocol definition: **MUST** use the normative Protocol Buffers definition in [`specification/grpc/a2a.proto`](https://github.com/a2aproject/A2A/blob/main/specification/grpc/a2a.proto).
+- Message serialization: **MUST** use Protocol Buffers version 3.
+- Service definition: **MUST** implement the `A2AService` gRPC service as defined in the proto file.
+- Method coverage: **MUST** provide all methods with functionally equivalent behavior to other supported transports.
+- Field mapping: **MUST** use the `json_name` annotations for HTTP/JSON transcoding compatibility.
+- Error handling: **MUST** map A2A error codes to appropriate gRPC status codes as defined in the proto annotations.
+- Transport security: **MUST** support TLS encryption (gRPC over HTTP/2 with TLS).
 
-**Note:**
-SlimRPC is only available for gRPC/Protobuf-based transports and is not supported for JSON-RPC or REST.
-
-- **Protocol Definition**: **MUST** use the normative Protocol Buffers definition in [`specification/grpc/a2a.proto`](https://github.com/a2aproject/A2A/blob/main/specification/grpc/a2a.proto).
-- **Message Serialization**: **MUST** use Protocol Buffers version 3 for message serialization.
-- **Service Definition**: **MUST** implement the `A2AService` gRPC service as defined in the proto file.
-- **Method Coverage**: **MUST** provide all methods with functionally equivalent behavior to other supported transports.
-- **Field Mapping**: **MUST** use the `json_name` annotations for HTTP/JSON transcoding compatibility.
-- **Error Handling**: **MUST** map A2A error codes to appropriate gRPC status codes as defined in the proto annotations.
-- **Transport Security**: **MUST** support TLS encryption (gRPC over HTTP/2 with TLS).
+**References:**
+- [slima2a README](https://github.com/agntcy/slim/tree/b064d0d1fce57c219f18e210770765f348c45fdd/data-plane/python/integrations/slima2a)
+- [A2A Protocol Buffers](https://github.com/a2aproject/A2A/blob/main/specification/grpc/a2a.proto)
+- [Travel Planner Example](https://github.com/agntcy/slim/blob/b064d0d1fce57c219f18e210770765f348c45fdd/data-plane/python/integrations/slima2a/examples/travel_planner_agent)
 
 #### 3.2.3. HTTP+JSON/REST Transport
 
