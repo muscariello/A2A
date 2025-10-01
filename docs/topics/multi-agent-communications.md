@@ -32,14 +32,14 @@ Clients **MUST** feature-detect before invoking channel methods.
 
 ## 3. Core Concepts
 
-| Concept | Description |
-|---------|-------------|
-| Channel | Durable logical conversation space among two or more principals. |
-| Direct Channel | Deterministic implicit channel between exactly two principals. |
-| Message Event | Immutable ordered communication entry within a channel. |
-| Sequence | Strictly increasing integer per channel defining total order. |
-| Cursor Token | Opaque encoded pagination or resume state. |
-| Control Event | (Reserved) Non-message structural update (membership, metadata). |
+| Concept        | Description                                                      |
+| -------------- | ---------------------------------------------------------------- |
+| Channel        | Durable logical conversation space among two or more principals. |
+| Direct Channel | Deterministic implicit channel between exactly two principals.   |
+| Message Event  | Immutable ordered communication entry within a channel.          |
+| Sequence       | Strictly increasing integer per channel defining total order.    |
+| Cursor Token   | Opaque encoded pagination or resume state.                       |
+| Control Event  | (Reserved) Non-message structural update (membership, metadata). |
 
 Direct channels re-use all channel semantics but are auto-created. They are never listed via `channels/list` unless a future capability is negotiated.
 
@@ -116,113 +116,27 @@ chan:direct:{hash(principalA,principalB)}
 - If `idempotencyKey` is present and a duplicate submission matches an existing stored event, the server **MUST** return the original event.
 - If the existing event differs semantically, the server **MUST** return `ConflictError`.
 
-## 7. Methods (JSON-RPC)
-
-| Method | Description | Required | Notes |
-|--------|-------------|----------|-------|
-| `channels/create` | Create a new channel | YES | Owner = caller |
-| `channels/get` | Fetch channel by ID | YES | Visibility & membership enforced |
-| `channels/list` | List channels | YES | Direct channels excluded |
-| `channels/update` | Update name/metadata (optimistic) | YES | Requires `expectedVersion` |
-| `channels/delete` | Delete channel | YES | MUST clear membership |
-| `channels/addMember` | Add member | YES | Owner-only |
-| `channels/removeMember` | Remove member | YES | Owner-only (cannot remove last owner) |
-| `channels/publish` | Publish message event | YES | Increments sequence |
-| `channels/history` | Paginate message events | YES | Cursor or sequence filters |
-| `channels/stream` | Stream future events | YES | SSE / server stream |
-
-### 7.1 `channels/publish`
-Params:
-```jsonc
-{
-  "channelId": "chan_123",
-  "parts": [ { "type": "text", "text": "Draft summary?" } ],
-  "artifactRefs": ["artifact_abc"],
-  "idempotencyKey": "uuid-1",
-  "metadata": { "phase": "synthesis" }
-}
-```
-Result:
-```jsonc
-{ "event": { /* MessageEvent */ } }
-```
-
-Errors:
-- `ChannelNotFoundError`
-- `PermissionDeniedError`
-- `ConflictError` (idempotency mismatch)
-- `LimitExceededError` (payload too large)
-
-### 7.2 `channels/history`
-Params:
-```jsonc
-{
-  "channelId": "chan_123",
-  "pageSize": 50,
-  "pageToken": "opaqueCursor",
-  "sinceSequence": 10,
-  "authorIds": ["agent://assistant"]
-}
-```
-Result:
-```jsonc
-{
-  "events": [ /* MessageEvent[] */ ],
-  "nextPageToken": "opaqueNext"
-}
-```
-Rules:
-- `sinceSequence` and `sinceTimestamp` are mutually exclusive.
-- If both supplied → `InvalidParamsError`.
-
-### 7.3 `channels/stream`
-Params:
-```jsonc
-{
-  "channelId": "chan_123",
-  "sinceSequence": 40,
-  "heartbeatIntervalMs": 15000
-}
-```
-Stream Events:
-- `messageEvent` objects.
-- Optional heartbeat events (future) with `kind: "heartbeat"` (reserved).
-
-### 7.4 `channels/update`
-Params:
-```jsonc
-{
-  "channelId": "chan_123",
-  "expectedVersion": 3,
-  "name": "research-collab-phase2",
-  "metadataPatch": {
-    "set": { "phase": "iteration" },
-    "remove": ["deprecatedKey"]
-  }
-}
-```
-Conflict if `expectedVersion` mismatches current channel `version`.
 
 ## 8. Constraints & Defaults
 
-| Item | Default | Bounds | Notes |
-|------|---------|--------|-------|
-| pageSize | 50 | 1–200 | Server MAY clamp |
-| name length | — | ≤128 chars | Server MAY reject longer |
-| metadata size | — | ≤16KB | Combined serialized size |
-| parts per publish | — | ≤32 | Recommendation |
-| idempotencyKey length | — | ≤128 chars | Optional |
+| Item                  | Default | Bounds     | Notes                    |
+| --------------------- | ------- | ---------- | ------------------------ |
+| pageSize              | 50      | 1–200      | Server MAY clamp         |
+| name length           | —       | ≤128 chars | Server MAY reject longer |
+| metadata size         | —       | ≤16KB      | Combined serialized size |
+| parts per publish     | —       | ≤32        | Recommendation           |
+| idempotencyKey length | —       | ≤128 chars | Optional                 |
 
 ## 9. Errors
 
-| Error | Condition |
-|-------|-----------|
-| `ChannelNotFoundError` | Unknown channelId |
-| `PermissionDeniedError` | Caller not member or visibility restriction |
-| `ConflictError` | Version mismatch / idempotency semantic mismatch |
-| `InvalidParamsError` | Mutually exclusive filters or malformed cursor |
-| `LimitExceededError` | Payload or metadata exceeds limits |
-| `RateLimitError` | Server throttling publish or history |
+| Error                   | Condition                                        |
+| ----------------------- | ------------------------------------------------ |
+| `ChannelNotFoundError`  | Unknown channelId                                |
+| `PermissionDeniedError` | Caller not member or visibility restriction      |
+| `ConflictError`         | Version mismatch / idempotency semantic mismatch |
+| `InvalidParamsError`    | Mutually exclusive filters or malformed cursor   |
+| `LimitExceededError`    | Payload or metadata exceeds limits               |
+| `RateLimitError`        | Server throttling publish or history             |
 
 ## 10. Security
 
