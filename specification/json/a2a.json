@@ -2544,7 +2544,8 @@
             "enum": [
                 "JSONRPC",
                 "GRPC",
-                "HTTP+JSON"
+                "HTTP+JSON",
+                "SRPC"
             ],
             "type": "string"
         },
@@ -2573,4 +2574,3 @@
         }
     }
 }
-

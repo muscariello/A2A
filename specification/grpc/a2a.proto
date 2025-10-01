@@ -359,9 +359,9 @@ message AuthenticationInfo {
 message AgentInterface {
   // The url this interface is found at.
   string url = 1;
-  // The transport supported this url. This is an open form string, to be
+  // The transport supported at this url. This is an open form string, to be
   // easily extended for many transport protocols. The core ones officially
-  // supported are JSONRPC, GRPC and HTTP+JSON.
+  // supported are JSONRPC, GRPC, HTTP+JSON, and SRPC (SlimRPC).
   string transport = 2;
 }
 // --8<-- [end:AgentInterface]
