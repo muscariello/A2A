@@ -302,23 +302,23 @@ For custom or extension methods not defined in the core A2A specification:
 
 Extension methods **MUST** be clearly documented and **MUST NOT** conflict with core A2A method names or semantics.
 
-#### 3.5.6. Method Mapping Reference Table
+### 3.5.6. Method Mapping Reference Table
 
 For quick reference, the following table summarizes the method mappings across all transports:
 
-| JSON-RPC Method                       | gRPC Method                  | REST Endpoint                                              | Description                     |
-| :------------------------------------ | :--------------------------- | :--------------------------------------------------------- | :------------------------------ |
-| `message/send`                        | `SendMessage`                | `POST /v1/message:send`                                    | Send message to agent           |
-| `message/stream`                      | `SendStreamingMessage`       | `POST /v1/message:stream`                                  | Send message with streaming     |
-| `tasks/get`                           | `GetTask`                    | `GET /v1/tasks/{id}`                                       | Get task status                 |
-| `tasks/list`                          | `ListTask`                   | `GET /v1/tasks`                                            | List tasks (gRPC/REST only)     |
-| `tasks/cancel`                        | `CancelTask`                 | `POST /v1/tasks/{id}:cancel`                               | Cancel task                     |
-| `tasks/resubscribe`                   | `TaskSubscription`           | `POST /v1/tasks/{id}:subscribe`                            | Resume task streaming           |
-| `tasks/pushNotificationConfig/set`    | `CreateTaskPushNotification` | `POST /v1/tasks/{id}/pushNotificationConfigs`              | Set push notification config    |
-| `tasks/pushNotificationConfig/get`    | `GetTaskPushNotification`    | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`    | Get push notification config    |
-| `tasks/pushNotificationConfig/list`   | `ListTaskPushNotification`   | `GET /v1/tasks/{id}/pushNotificationConfigs`               | List push notification configs  |
+| JSON-RPC Method | gRPC Method | REST Endpoint | Description |
+|:----------------|:------------|:--------------|:------------|
+| `message/send` | `SendMessage` | `POST /v1/message:send` | Send message to agent |
+| `message/stream` | `SendStreamingMessage` | `POST /v1/message:stream` | Send message with streaming |
+| `tasks/get` | `GetTask` | `GET /v1/tasks/{id}` | Get task status |
+| `tasks/list` | `ListTask` | `GET /v1/tasks` | List tasks (gRPC/REST only) |
+| `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` | Cancel task |
+| `tasks/resubscribe` | `TaskSubscription` | `POST /v1/tasks/{id}:subscribe` | Resume task streaming |
+| `tasks/pushNotificationConfig/set` | `CreateTaskPushNotification` | `POST /v1/tasks/{id}/pushNotificationConfigs` | Set push notification config |
+| `tasks/pushNotificationConfig/get` | `GetTaskPushNotification` | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` | Get push notification config |
+| `tasks/pushNotificationConfig/list` | `ListTaskPushNotification` | `GET /v1/tasks/{id}/pushNotificationConfigs` | List push notification configs |
 | `tasks/pushNotificationConfig/delete` | `DeleteTaskPushNotification` | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` | Delete push notification config |
-| `agent/getAuthenticatedExtendedCard`  | `GetAgentCard`               | `GET /v1/card`                                             | Get authenticated agent card    |
+| `agent/getAuthenticatedExtendedCard` | `GetAgentCard` | `GET /v1/card` | Get authenticated agent card |
 
 ## 4. Authentication and Authorization
 
