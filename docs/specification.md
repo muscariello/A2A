@@ -117,7 +117,7 @@ SlimRPC (SRPC) is an agent group messaging protocol for A2A, designed for use wi
 
 ##### Practical Integration: Python (`slima2a`)
 
-The [slima2a](https://github.com/agntcy/slim/tree/b064d0d1fce57c219f18e210770765f348c45fdd/data-plane/python/integrations/slima2a) Python package provides a native A2A integration on top of SLIM and SlimRPC. It uses the SLIM RPC compiler to generate code from the A2A proto file, enabling secure, group-based agent messaging.
+The [slima2a](https://github.com/agntcy/slim/tree/slim-v0.5.0/data-plane/python/integrations/slima2a) Python package provides a native A2A integration on top of SLIM and SlimRPC. It uses the SLIM RPC compiler to generate code from the A2A proto file, enabling secure, group-based agent messaging.
 
 **Key Features:**
 - Durable group messaging, channels, and multi-agent collaboration
