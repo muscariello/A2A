@@ -100,7 +100,13 @@ Agents **MAY** support JSON-RPC 2.0 transport. If implemented, it **MUST** confo
 
 Agents **MAY** support gRPC transport. If implemented, it **MUST** conform to these requirements:
 
-
+- **Protocol Definition**: **MUST** use the normative Protocol Buffers definition in [`specification/grpc/a2a.proto`](https://github.com/a2aproject/A2A/blob/main/specification/grpc/a2a.proto).
+- **Message Serialization**: **MUST** use Protocol Buffers version 3 for message serialization.
+- **Service Definition**: **MUST** implement the `A2AService` gRPC service as defined in the proto file.
+- **Method Coverage**: **MUST** provide all methods with functionally equivalent behavior to other supported transports.
+- **Field Mapping**: **MUST** use the `json_name` annotations for HTTP/JSON transcoding compatibility.
+- **Error Handling**: **MUST** map A2A error codes to appropriate gRPC status codes as defined in the proto annotations.
+- **Transport Security**: **MUST** support TLS encryption (gRPC over HTTP/2 with TLS).
 
 #### 3.2.3. SlimRPC (SRPC) Agent Group Messaging Protocol
 
