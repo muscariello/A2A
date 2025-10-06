@@ -840,14 +840,14 @@ message GroupPublish {
 
   oneof published_content {
     // 1. A new message/turn of conversation (e.g., a question or suggestion).
-    a2a.core.v1.Message new_message = 3;
+    Message new_message = 3;
 
     // 2. An official A2A Artifact (e.g., a generated report or image).
-    a2a.core.v1.Artifact new_artifact = 4;
+    Artifact new_artifact = 4;
 
     // 3. A formal update on a sub-task status (e.g., "I finished my part").
     // This allows the group to monitor work progress without a central manager.
-    a2a.core.v1.TaskStatusUpdateEvent task_update = 5;
+    TaskStatusUpdateEvent task_update = 5;
   }
 }
 // --8<-- [end:GroupPublish]
@@ -863,9 +863,9 @@ message GroupUpdate {
 
   // The content of the update, mirroring the publishable content.
   oneof update_content {
-    a2a.core.v1.Message published_message = 3;
-    a2a.core.v1.Artifact published_artifact = 4;
-    a2a.core.v1.TaskStatusUpdateEvent published_task_update = 5;
+    Message published_message = 3;
+    Artifact published_artifact = 4;
+    TaskStatusUpdateEvent published_task_update = 5;
   }
 }
 // --8<-- [end:GroupUpdate]
