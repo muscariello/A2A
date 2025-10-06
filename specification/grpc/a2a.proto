@@ -110,6 +110,11 @@ service A2AService {
   }
 }
 
+// A2AGroupService defines the interface for group operations.
+service A2AGroupService {
+    rpc GroupUpdate(stream GroupPublish) returns (stream GroupUpdate);
+}
+
 ///////// Data Model ////////////
 
 // --8<-- [start:MessageSendConfiguration]
@@ -819,3 +824,48 @@ message ListTaskPushNotificationConfigResponse {
   string next_page_token = 2;
 }
 // --8<-- [end:ListTaskPushNotificationConfigSuccessResponse]
+
+// --8<-- [start:GroupPublish]
+// The wrapper message for a peer sending any type of update to the group.
+message GroupPublish {
+  // A unique identifier for the conversation thread (the "group").
+  string thread_id = 1;
+
+  // The unique identifier of the agent publishing the message.
+  string sender_agent_id = 2;
+
+  // Optional identification of the agent that this message is intended for.
+  // If empty, the message is intended for all agents in the group.
+  string target_agent_id = 6;
+
+  oneof published_content {
+    // 1. A new message/turn of conversation (e.g., a question or suggestion).
+    a2a.core.v1.Message new_message = 3;
+
+    // 2. An official A2A Artifact (e.g., a generated report or image).
+    a2a.core.v1.Artifact new_artifact = 4;
+
+    // 3. A formal update on a sub-task status (e.g., "I finished my part").
+    // This allows the group to monitor work progress without a central manager.
+    a2a.core.v1.TaskStatusUpdateEvent task_update = 5;
+  }
+}
+// --8<-- [end:GroupPublish]
+
+// --8<-- [start:GroupUpdate]
+// The message streamed back to the client, consolidating all possible updates.
+message GroupUpdate {
+  // A unique ID assigned for this update.
+  string update_id = 1;
+
+  // Timestamp when the update was published.
+  google.protobuf.Timestamp timestamp = 2;
+
+  // The content of the update, mirroring the publishable content.
+  oneof update_content {
+    a2a.core.v1.Message published_message = 3;
+    a2a.core.v1.Artifact published_artifact = 4;
+    a2a.core.v1.TaskStatusUpdateEvent published_task_update = 5;
+  }
+}
+// --8<-- [end:GroupUpdate]
