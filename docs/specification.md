@@ -257,6 +257,103 @@ Retrieves the agent's capability and configuration information.
 - **gRPC**: [`GetAgentCard`](#103-core-methods)
 - **HTTP/REST**: [`GET /v1/card`](#1124-agent-card)
 
+#### 3.1.8. Create Push Notification Config
+
+Creates a push notification configuration for a task to receive asynchronous updates.
+
+**Inputs:**
+
+- `taskId`: Unique identifier of the task to configure notifications for
+- [`PushNotificationConfig`](#431-pushnotificationconfig): Configuration specifying webhook URL and notification preferences
+
+**Outputs:**
+
+- [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig): Created configuration with assigned ID
+
+**Behavior:**
+
+- Establishes webhook endpoint for task completion notifications
+- Only available if agent supports push notifications capability
+- Configuration persists until task completion or explicit deletion
+
+**Transport Implementations:**
+
+- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#tasks-push-notification-config-operations)
+- **gRPC**: [`CreateTaskPushNotificationConfig`](#grpc-push-notification-operations)
+- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#push-notification-operations)
+
+#### 3.1.9. Get Push Notification Config
+
+Retrieves an existing push notification configuration for a task.
+
+**Inputs:**
+
+- `taskId`: Unique identifier of the task
+- `configId`: Unique identifier of the push notification configuration
+
+**Outputs:**
+
+- [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig): The requested configuration
+
+**Behavior:**
+
+- Returns configuration details including webhook URL and notification settings
+- Fails if configuration does not exist or client lacks access
+
+**Transport Implementations:**
+
+- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#tasks-push-notification-config-operations)
+- **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#push-notification-operations)
+
+#### 3.1.10. List Push Notification Configs
+
+Retrieves all push notification configurations for a task.
+
+**Inputs:**
+
+- `taskId`: Unique identifier of the task
+
+**Outputs:**
+
+- Array of [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) objects
+
+**Behavior:**
+
+- Returns all active push notification configurations for the specified task
+- May support pagination for tasks with many configurations
+
+**Transport Implementations:**
+
+- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#tasks-push-notification-config-operations)
+- **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#push-notification-operations)
+
+#### 3.1.11. Delete Push Notification Config
+
+Removes a push notification configuration for a task.
+
+**Inputs:**
+
+- `taskId`: Unique identifier of the task
+- `configId`: Unique identifier of the push notification configuration to delete
+
+**Outputs:**
+
+- Confirmation of deletion (implementation-specific)
+
+**Behavior:**
+
+- Permanently removes the specified push notification configuration
+- No further notifications will be sent to the configured webhook
+- Idempotent operation - multiple deletions of same config have same effect
+
+**Transport Implementations:**
+
+- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#tasks-push-notification-config-operations)
+- **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
+- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#push-notification-operations)
+
 ### 3.2. Operation Semantics
 
 #### 3.2.1. Idempotency
@@ -899,6 +996,8 @@ Sends a message to initiate or continue a task.
 }
 ```
 
+**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#4241-messagesendconfiguration)
+
 **Response:**
 ```json
 {
@@ -908,6 +1007,8 @@ Sends a message to initiate or continue a task.
 }
 ```
 
+**Referenced Objects:** [`Task`](#411-task), [`Message`](#414-message)
+
 #### 9.3.2. `message/stream`
 
 Sends a message and subscribes to real-time updates via Server-Sent Events.
@@ -916,10 +1017,12 @@ Sends a message and subscribes to real-time updates via Server-Sent Events.
 
 **Response:** HTTP 200 with `Content-Type: text/event-stream`
 ```
-data: {"jsonrpc": "2.0", "id": 1, "result": { /* StreamResponse */ }}
+data: {"jsonrpc": "2.0", "id": 1, "result": { /* Task | Message | TaskArtifactUpdateEvent | TaskStatusUpdateEvent */ }}
 
-data: {"jsonrpc": "2.0", "id": 1, "result": { /* StreamResponse */ }}
+data: {"jsonrpc": "2.0", "id": 1, "result": { /* Task | Message | TaskArtifactUpdateEvent | TaskStatusUpdateEvent */ }}
 ```
+
+Referenced Objects: [`Task`](#411-task), [`Message`](#414-message), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent)
 
 #### 9.3.3. `tasks/get`
 
@@ -1060,36 +1163,131 @@ service A2AService {
 
 Sends a message to an agent.
 
-**Request:** `SendMessageRequest`
-**Response:** `SendMessageResponse`
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:SendMessageRequest"
+```
+
+**Response:**
+```proto
+--8<-- "specification/grpc/a2a.proto:SendMessageResponse"
+```
 
 #### 10.3.2. SendStreamingMessage
 
 Sends a message with streaming updates.
 
-**Request:** `SendMessageRequest`
-**Response:** Server streaming `StreamResponse`
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:SendMessageRequest"
+```
+
+**Response:** Server streaming [`StreamResponse`](#stream-response) objects.
 
 #### 10.3.3. GetTask
 
 Retrieves task status.
 
-**Request:** `GetTaskRequest`
-**Response:** `Task`
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:GetTaskRequest"
+```
+
+**Response:** See [`Task`](#411-task) object definition.
 
 #### 10.3.4. ListTasks
 
 Lists tasks with filtering.
 
-**Request:** `ListTasksRequest`
-**Response:** `ListTasksResponse`
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:ListTasksRequest"
+```
 
-#### 10.3.5. TaskResubscription
+**Response:**
+```proto
+--8<-- "specification/grpc/a2a.proto:ListTasksResponse"
+```
+
+#### 10.3.5. CancelTask
+
+Cancels a running task.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:CancelTaskRequest"
+```
+
+**Response:** See [`Task`](#411-task) object definition.
+
+#### 10.3.6. TaskResubscription
 
 Resubscribe to task updates via streaming.
 
-**Request:** `TaskResubscriptionRequest`
-**Response:** Server streaming `StreamResponse`
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:TaskResubscriptionRequest"
+```
+
+**Response:** Server streaming [`StreamResponse`](#stream-response) objects.
+
+#### 10.3.7. CreateTaskPushNotificationConfig
+
+Creates a push notification configuration for a task.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:CreateTaskPushNotificationConfigRequest"
+```
+
+**Response:** See [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) object definition.
+
+#### 10.3.8. GetTaskPushNotificationConfig
+
+Retrieves an existing push notification configuration for a task.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:GetTaskPushNotificationConfigRequest"
+```
+
+**Response:** See [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) object definition.
+
+#### 10.3.9. ListTaskPushNotificationConfig
+
+Lists all push notification configurations for a task.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:ListTaskPushNotificationConfigRequest"
+```
+
+**Response:**
+```proto
+--8<-- "specification/grpc/a2a.proto:ListTaskPushNotificationConfigResponse"
+```
+
+#### 10.3.10. DeleteTaskPushNotificationConfig
+
+Removes a push notification configuration for a task.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:DeleteTaskPushNotificationConfigRequest"
+```
+
+**Response:** `google.protobuf.Empty`
+
+#### 10.3.11. GetAgentCard
+
+Retrieves the agent's capability card.
+
+**Request:**
+```proto
+--8<-- "specification/grpc/a2a.proto:GetAgentCardRequest"
+```
+
+**Response:** See [`AgentCard`](#421-agentcard) object definition.
 
 ### 10.4. Error Handling
 
@@ -1136,15 +1334,9 @@ status {
 
 gRPC streaming uses server streaming RPCs for real-time updates. The `StreamResponse` message provides a union of possible streaming events:
 
+
 ```proto
-message StreamResponse {
-  oneof payload {
-    Task task = 1;
-    Message msg = 2;
-    TaskStatusUpdateEvent status_update = 3;
-    TaskArtifactUpdateEvent artifact_update = 4;
-  }
-}
+--8<-- "specification/grpc/a2a.proto:StreamResponse"
 ```
 
 ## 11. HTTP+JSON/REST Transport
@@ -1205,6 +1397,8 @@ Content-Type: application/json
 }
 ```
 
+**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#4241-messagesendconfiguration)
+
 **Response:**
 ```http
 HTTP/1.1 200 OK
@@ -1220,6 +1414,8 @@ Content-Type: application/json
   }
 }
 ```
+
+**Referenced Objects:** [`Task`](#411-task)
 
 ### 11.4. Query Parameters
 
@@ -1281,6 +1477,8 @@ Content-Type: application/json
 }
 ```
 
+**Referenced Objects:** [`Message`](#414-message)
+
 **Response:**
 ```http
 HTTP/1.1 200 OK
@@ -1288,7 +1486,9 @@ Content-Type: text/event-stream
 
 data: {"task": { /* Task object */ }}
 
-data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
-
 data: {"artifactUpdate": { /* TaskArtifactUpdateEvent */ }}
+
+data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
 ```
+
+**Referenced Objects:** [`Task`](#411-task), [`TaskStatusUpdateEvent`](#4192-taskstatusupdateevent), [`TaskArtifactUpdateEvent`](#4193-taskartifactupdateevent)
