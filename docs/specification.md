@@ -113,13 +113,14 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 **Inputs:**
 
-- Same as Send Message
+- [`Message`](#414-message): The message containing user input (required)
+- `contextId`: Optional context identifier for conversation continuity
+- [`pushNotificationConfig`](#431-pushnotificationconfig): Optional configuration for task completion notifications
 
 **Outputs:**
 
 - Initial response: [`Task`](#411-task) object OR [`Message`](#414-message) object
-- Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects (when [`Task`](#411-task) is returned)
-- Stream of message parts or incremental content (when [`Message`](#414-message) is returned)
+- Subsequent events following a `Task` MAY include stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 - Final completion indicator
 
 **Behavior:**
@@ -216,6 +217,7 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Outputs:**
 
+- Initial response: [`Task`](#411-task) object with current state
 - Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 
 **Behavior:**
