@@ -1013,40 +1013,21 @@ Retrieves an authenticated, potentially extended Agent Card.
 
 ### 9.4. Error Handling
 
-JSON-RPC errors follow the standard JSON-RPC 2.0 error format:
+A2A defines a set of errors that are specific to the semantics of the A2A protocol.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "error": {
-    "code": -32001,
-    "message": "Task not found",
-    "data": { /* optional additional error data */ }
-  }
-}
-```
+**A2A-Specific Errors:**
 
-**Standard Error Codes:**
-- `-32700`: Parse error
-- `-32600`: Invalid Request
-- `-32601`: Method not found
-- `-32602`: Invalid params
-- `-32603`: Internal error
-
-**A2A-Specific Error Codes:**
-
-| Error Code | Error Name | Description |
-|:-----------|:-----------|:------------|
-| `-32001` | `TaskNotFoundError` | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged. |
-| `-32002` | `TaskNotCancelableError` | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
-| `-32003` | `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`). |
-| `-32004` | `UnsupportedOperationError` | The requested operation or a specific aspect of it is not supported by this server agent implementation. |
-| `-32005` | `ContentTypeNotSupportedError` | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked. |
+| Error Name | Description |
+|:-----------|:------------|
+| `TaskNotFoundError` | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged. |
+| `TaskNotCancelableError` | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
+| `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`). |
+| `UnsupportedOperationError` | The requested operation or a specific aspect of it is not supported by this server agent implementation. |
+| `ContentTypeNotSupportedError` | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked. |
 
 ## 10. gRPC Transport
 
-The gRPC transport provides a high-performance, strongly-typed interface using Protocol Buffers over HTTP/2.
+The gRPC transport provides a high-performance, strongly-typed interface using Protocol Buffers over HTTP/2. The gRPC transport leverages the [API guidelines](https://google.aip.dev/general) to simplify gRPC to HTTP mapping.
 
 ### 10.1. Transport Requirements
 
@@ -1112,17 +1093,37 @@ Resubscribe to task updates via streaming.
 
 ### 10.4. Error Handling
 
-A2A defines a set of errors that are specific to the semantics of the A2A protocol.
+A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors.
 
-#### 10.4.1. A2A Errors
+#### 10.4.1. A2A Error Mappings
 
-| A2A Error Type | Description |
-|:---------------|:------------|
-| `TaskNotFoundError` | Task ID not found |
-| `TaskNotCancelableError` | Task not in cancelable state |
-| `PushNotificationNotSupportedError` | Push notifications not supported |
-| `UnsupportedOperationError` | Operation not supported |
-| `ContentTypeNotSupportedError` | Unsupported content type |
+| A2A Error Type | Description | gRPC Status Code |
+|:---------------|:------------|:-----------------|
+| `TaskNotFoundError` | Task ID not found | `NOT_FOUND` |
+| `TaskNotCancelableError` | Task not in cancelable state | `FAILED_PRECONDITION` |
+| `PushNotificationNotSupportedError` | Push notifications not supported | `UNIMPLEMENTED` |
+| `UnsupportedOperationError` | Operation not supported | `UNIMPLEMENTED` |
+| `ContentTypeNotSupportedError` | Unsupported content type | `INVALID_ARGUMENT` |
+
+**Example Error Response:**
+
+```proto
+// gRPC Status object
+status {
+  code: NOT_FOUND
+  message: "Task with ID 'task-123' not found"
+  details: [
+    {
+      type_url: "type.googleapis.com/a2a.TaskNotFoundError"
+      value: {
+        error_type: "TaskNotFoundError"
+        task_id: "task-123"
+        timestamp: "2025-10-19T14:30:00Z"
+      }
+    }
+  ]
+}
+```
 
 #### 10.4.2. Implementation Requirements
 
