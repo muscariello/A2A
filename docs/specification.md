@@ -96,10 +96,7 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 **Behavior:**
 
-- May create a new task to process the provided message asynchronously
-- May return a direct message response for simple interactions
-- Returns immediately with either task information or response message
-- Task processing may continue asynchronously after response (when [`Task`](#411-task) is returned)
+The agent MAY create a new task to process the provided message asynchronously or MAY return a direct message response for simple interactions. The operation MUST return immediately with either task information or response message. Task processing MAY continue asynchronously after the response when a [`Task`](#411-task) is returned.
 
 **Transport Implementations:**
 
@@ -125,11 +122,7 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 **Behavior:**
 
-- Establishes a streaming connection for real-time updates
-- May return a [`Task`](#411-task) for complex processing with status/artifact updates
-- May return a [`Message`](#414-message) for direct streaming responses without task overhead
-- Provides immediate feedback on progress and intermediate results
-- Stream terminates when processing reaches a final state
+The operation MUST establish a streaming connection for real-time updates. The agent MAY return a [`Task`](#411-task) for complex processing with status/artifact updates or MAY return a [`Message`](#414-message) for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results. The stream MUST terminate when processing reaches a final state.
 
 **Transport Implementations:**
 
@@ -151,8 +144,7 @@ Retrieves current information about an existing task.
 
 **Behavior:**
 
-- Returns current task state and any available artifacts
-- Supports polling-based clients that don't use streaming
+The operation MUST return the current task state and any available artifacts. This operation SHOULD be used to support polling-based clients that don't use streaming.
 
 **Transport Implementations:**
 
@@ -166,16 +158,22 @@ Retrieves a list of tasks associated with the current client session or context.
 
 **Inputs:**
 
-- Optional filtering parameters (implementation-specific)
+- `contextId` (optional): Filter tasks by context ID to get tasks from a specific conversation or session
+- `status` (optional): Filter tasks by their current status state
+- `pageSize` (optional): Maximum number of tasks to return (must be between 1 and 100, defaults to 50)
+- `pageToken` (optional): Token for pagination from a previous response
+- `historyLength` (optional): Number of recent messages to include in each task's history (defaults to 0)
+- `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
+- `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
 
 **Outputs:**
 
 - Array of [`Task`](#411-task) objects
+- Pagination information including `nextPageToken` for retrieving additional results
 
 **Behavior:**
 
-- Returns tasks visible to the authenticated client
-- May support pagination and filtering
+The operation MUST return only tasks visible to the authenticated client and MUST use cursor-based pagination for performance and consistency. Tasks MUST be sorted by last update time in descending order. Implementations MUST implement appropriate authorization scoping to ensure clients can only access authorized tasks.
 
 **Transport Implementations:**
 
@@ -197,9 +195,7 @@ Requests cancellation of an active task.
 
 **Behavior:**
 
-- Attempts to stop task processing
-- Returns updated task state
-- Success depends on task's current state and agent capabilities
+The operation SHOULD attempt to stop task processing and MUST return the updated task state. Success depends on the task's current state and agent capabilities. The agent MAY refuse cancellation for tasks that cannot be safely interrupted.
 
 **Transport Implementations:**
 
@@ -222,10 +218,7 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Behavior:**
 
-- Enables real-time monitoring of task progress
-- **Limitation**: Can only be used with tasks created by `message/stream` operations, not `message/send`
-- Useful for reconnecting to previously created streaming tasks after connection interruption
-- Stream terminates when task reaches a final state
+The operation MUST enable real-time monitoring of task progress but can only be used with tasks created by `message/stream` operations, not `message/send`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
 
 **Transport Implementations:**
 
@@ -247,9 +240,7 @@ Retrieves the agent's capability and configuration information.
 
 **Behavior:**
 
-- Returns public agent information
-- May include different details based on client authentication level
-- Essential for agent discovery and capability negotiation
+The operation MUST return public agent information and MAY include different details based on client authentication level. This operation is essential for agent discovery and capability negotiation.
 
 **Transport Implementations:**
 
@@ -272,9 +263,7 @@ Creates a push notification configuration for a task to receive asynchronous upd
 
 **Behavior:**
 
-- Establishes webhook endpoint for task completion notifications
-- Only available if agent supports push notifications capability
-- Configuration persists until task completion or explicit deletion
+The operation MUST establish a webhook endpoint for task completion notifications and is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
 **Transport Implementations:**
 
@@ -297,8 +286,7 @@ Retrieves an existing push notification configuration for a task.
 
 **Behavior:**
 
-- Returns configuration details including webhook URL and notification settings
-- Fails if configuration does not exist or client lacks access
+The operation MUST return configuration details including webhook URL and notification settings. The operation MUST fail if the configuration does not exist or the client lacks access.
 
 **Transport Implementations:**
 
@@ -320,8 +308,7 @@ Retrieves all push notification configurations for a task.
 
 **Behavior:**
 
-- Returns all active push notification configurations for the specified task
-- May support pagination for tasks with many configurations
+The operation MUST return all active push notification configurations for the specified task and MAY support pagination for tasks with many configurations.
 
 **Transport Implementations:**
 
@@ -344,9 +331,7 @@ Removes a push notification configuration for a task.
 
 **Behavior:**
 
-- Permanently removes the specified push notification configuration
-- No further notifications will be sent to the configured webhook
-- Idempotent operation - multiple deletions of same config have same effect
+The operation MUST permanently remove the specified push notification configuration. No further notifications will be sent to the configured webhook after deletion. This operation MUST be idempotent - multiple deletions of the same config have the same effect.
 
 **Transport Implementations:**
 
