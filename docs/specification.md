@@ -85,14 +85,13 @@ The primary operation for initiating agent interactions. Clients send a message 
 **Inputs:**
 
 - [`Message`](#414-message): The message containing user input (required)
-- `contextId`: Optional context identifier for conversation continuity
-- [`pushNotificationConfig`](#431-pushnotificationconfig): Optional configuration for task completion notifications
+- [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
+- `metadata`: Optional metadata for the request (optional)
 
 **Outputs:**
 
 - [`Task`](#411-task): A task object representing the processing of the message, OR
 - [`Message`](#414-message): A direct response message (for simple interactions that don't require task tracking)
-- When returning a [`Task`](#411-task), it may be in any valid state (`working`, `completed`, `input-required`, `failed`)
 
 **Behavior:**
 
@@ -111,8 +110,8 @@ Similar to Send Message but with real-time streaming of updates during processin
 **Inputs:**
 
 - [`Message`](#414-message): The message containing user input (required)
-- `contextId`: Optional context identifier for conversation continuity
-- [`pushNotificationConfig`](#431-pushnotificationconfig): Optional configuration for task completion notifications
+- [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
+- `metadata`: Optional metadata for the request (optional)
 
 **Outputs:**
 
@@ -267,9 +266,9 @@ The operation MUST establish a webhook endpoint for task completion notification
 
 **Transport Implementations:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#tasks-push-notification-config-operations)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
 - **gRPC**: [`CreateTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#push-notification-operations)
+- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
 
 #### 3.1.9. Get Push Notification Config
 
@@ -290,9 +289,9 @@ The operation MUST return configuration details including webhook URL and notifi
 
 **Transport Implementations:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#tasks-push-notification-config-operations)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#937-push-notification-configuration-methods)
 - **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#push-notification-operations)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
 
 #### 3.1.10. List Push Notification Configs
 
@@ -312,9 +311,9 @@ The operation MUST return all active push notification configurations for the sp
 
 **Transport Implementations:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#tasks-push-notification-config-operations)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#937-push-notification-configuration-methods)
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#push-notification-operations)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
 
 #### 3.1.11. Delete Push Notification Config
 
@@ -335,9 +334,9 @@ The operation MUST permanently remove the specified push notification configurat
 
 **Transport Implementations:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#tasks-push-notification-config-operations)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#937-push-notification-configuration-methods)
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#push-notification-operations)
+- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
 
 ### 3.2. Operation Semantics
 
@@ -364,7 +363,23 @@ All operations may return errors in the following categories:
 - Clients must poll or stream to get completion status
 - Agents may continue processing after initial response
 
-### 3.3. Multi-Turn Interactions
+### 3.3. Operation Parameter Objects
+
+This section defines common parameter objects used across multiple operations.
+
+#### 3.3.1. MessageSendConfiguration
+
+Configuration for send message requests.
+
+```proto
+--8<-- "specification/grpc/a2a.proto:MessageSendConfiguration"
+```
+
+### 3.3.2. Metadata
+
+A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#extensions) can be used to strongly type metadata values for specific use cases.
+
+### 3.4. Multi-Turn Interactions
 
 The A2A protocol supports multi-turn conversations through task context:
 
@@ -373,7 +388,7 @@ The A2A protocol supports multi-turn conversations through task context:
 3. **Follow-up Messages**: Clients can send additional messages with `taskId` reference
 4. **Context Inheritance**: New tasks can inherit context from previous interactions
 
-### 3.4. Streaming and Real-Time Updates
+### 3.5. Streaming and Real-Time Updates
 
 Real-time capabilities are provided through:
 
@@ -605,6 +620,134 @@ Mutual TLS authentication scheme.
 ```proto
 --8<-- "specification/grpc/a2a.proto:MutualTLSSecurityScheme"
 ```
+
+### 4.6. Extensions
+
+The A2A protocol supports extensions to provide additional functionality or data beyond the core specification while maintaining backward compatibility and interoperability. Extensions allow agents to declare additional capabilities such as protocol enhancements or vendor-specific features, maintain compatibility with clients that don't support specific extensions, enable innovation through experimental or domain-specific features without modifying the core protocol, and facilitate standardization by providing a pathway for community-developed features to become part of the core specification.
+
+#### 4.6.1. Extension Declaration
+
+Agents declare their supported extensions in the [`AgentCard`](#441-agentcard) using the `extensions` field, which contains an array of [`AgentExtension`](#444-agentextension) objects.
+
+*Example: Agent declaring extension support in AgentCard:*
+```json
+{
+  "name": "Research Assistant Agent",
+  "description": "AI agent for academic research and fact-checking",
+  "url": "https://research-agent.example.com/a2a/v1",
+  "preferredTransport": "HTTP+JSON",
+  "extensions": [
+    {
+      "identifier": "https://standards.org/extensions/citations/v1",
+      "version": "1.0.0",
+      "required": false,
+      "documentationUrl": "https://standards.org/docs/citations-extension"
+    },
+    {
+      "identifier": "https://example.com/extensions/geolocation/v1",
+      "version": "1.2.0",
+      "required": false,
+      "documentationUrl": "https://example.com/docs/geolocation-ext"
+    }
+  ],
+  "skills": [
+    {
+      "id": "academic-research",
+      "name": "Academic Research Assistant",
+      "description": "Provides research assistance with citations and source verification"
+    }
+  ]
+}
+```
+
+Clients indicate their desire to opt into the use of specific extensions through transport-specific mechanisms such as HTTP headers, gRPC metadata, or JSON-RPC request parameters that identify the extension identifiers they wish to utilize during the interaction.
+
+*Example: HTTP client opting into extensions using headers:*
+```http
+POST /v1/message:send HTTP/1.1
+Host: agent.example.com
+Content-Type: application/json
+Authorization: Bearer token
+A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1
+
+{
+  "message": {
+    "role": "user",
+    "parts": [{"text": "Find restaurants near me"}],
+    "extensions": ["https://example.com/extensions/geolocation/v1"],
+    "metadata": {
+      "https://example.com/extensions/geolocation/v1": {
+        "latitude": 37.7749,
+        "longitude": -122.4194
+      }
+    }
+  }
+}
+```
+
+#### 4.6.2. Extensions Points
+
+Extensions can be integrated into the A2A protocol at several well-defined extension points:
+
+**Message Extensions:**
+
+Messages can be extended to allow clients to provide additional strongly typed context or parameters relevant to the message being sent, or TaskStatus Messages to include extra information about the task's progress.
+
+*Example: A location extension using the extensions and metadata arrays:*
+```json
+{
+  "role": "user",
+  "parts": [
+    {"text": "Find restaurants near me"}
+  ],
+  "extensions": ["https://example.com/extensions/geolocation/v1"],
+  "metadata": {
+    "https://example.com/extensions/geolocation/v1": {
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "accuracy": 10.0,
+      "timestamp": "2025-10-21T14:30:00Z"
+    }
+  }
+}
+```
+
+**Artifact Extensions:**
+
+Artifacts can include extension data to provide strongly typed context or metadata about the generated content.
+
+*Example: An artifact with citation extension for research sources:*
+```json
+{
+  "artifactId": "research-summary-001",
+  "name": "Climate Change Summary",
+  "parts": [
+    {
+      "text": "Global temperatures have risen by 1.1°C since pre-industrial times, with significant impacts on weather patterns and sea levels."
+    }
+  ],
+  "extensions": ["https://standards.org/extensions/citations/v1"],
+  "metadata": {
+    "https://standards.org/extensions/citations/v1": {
+      "sources": [
+        {
+          "title": "Global Temperature Anomalies - 2023 Report",
+          "authors": ["Smith, J.", "Johnson, M."],
+          "url": "https://climate.gov/reports/2023-temperature",
+          "accessDate": "2025-10-21",
+          "relevantText": "Global temperatures have risen by 1.1°C"
+        }
+      ]
+    }
+  }
+}
+```
+
+#### 4.6.2. Extension Versioning and Compatibility
+
+Extensions **SHOULD** include version information in their URI identifier. This allows clients and agents to negotiate compatible versions of extensions during interactions. A new URI **MUST** be created for breaking changes to an extension.
+
+If a client requests a versions of an extension that the agent does not support, the agent **SHOULD** ignore the extension for that interaction and proceed without it, unless the extension is marked as `required` in the AgentCard, in which case the agent **MUST** return an error indicating unsupported extension. It **MUST NOT** fall back to a previous version of the extension automatically.
 
 ## 5. Transport Compliance and Interoperability
 
@@ -981,7 +1124,7 @@ Sends a message to initiate or continue a task.
 }
 ```
 
-**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#4241-messagesendconfiguration)
+**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#331-messagesendconfiguration)
 
 **Response:**
 ```json
@@ -1272,7 +1415,7 @@ Retrieves the agent's capability card.
 --8<-- "specification/grpc/a2a.proto:GetAgentCardRequest"
 ```
 
-**Response:** See [`AgentCard`](#421-agentcard) object definition.
+**Response:** See [`AgentCard`](#441-agentcard) object definition.
 
 ### 10.4. Error Handling
 
@@ -1382,7 +1525,7 @@ Content-Type: application/json
 }
 ```
 
-**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#4241-messagesendconfiguration)
+**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#331-messagesendconfiguration)
 
 **Response:**
 ```http
@@ -1476,4 +1619,4 @@ data: {"artifactUpdate": { /* TaskArtifactUpdateEvent */ }}
 data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
 ```
 
-**Referenced Objects:** [`Task`](#411-task), [`TaskStatusUpdateEvent`](#4192-taskstatusupdateevent), [`TaskArtifactUpdateEvent`](#4193-taskartifactupdateevent)
+**Referenced Objects:** [`Task`](#411-task), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent)
