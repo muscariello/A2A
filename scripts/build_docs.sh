@@ -18,17 +18,6 @@ EXTRACT_SCRIPT="$ROOT_DIR/scripts/extract_json_schema.sh"
 regen_needed() {
   if [ ! -f "$SCHEMA_JSON" ]; then return 0; fi
 
-  # Use portable stat command (works on both macOS and Linux)
-  local stat_format
-  if stat -c %Y "$SCHEMA_JSON" >/dev/null 2>&1; then
-    # Linux/GNU stat
-    stat_format="-c %Y"
-  else
-    # macOS/BSD stat
-    stat_format="-f %m"
-  fi
-regen_needed() {
-  if [ ! -f "$SCHEMA_JSON" ]; then return 0; fi
   local proto_mtime
   local schema_mtime
   if [[ "$(uname)" == "Darwin" ]]; then
