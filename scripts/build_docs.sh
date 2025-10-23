@@ -27,13 +27,18 @@ regen_needed() {
     # macOS/BSD stat
     stat_format="-f %m"
   fi
-
-  local newest_source
-  newest_source=$(stat $stat_format "$PROTO_SRC" "$TS_SRC" 2>/dev/null | sort -nr | head -n1)
-  local schema_time
-  schema_time=$(stat $stat_format "$SCHEMA_JSON" 2>/dev/null)
-
-  [ "$newest_source" -gt "$schema_time" ]
+regen_needed() {
+  if [ ! -f "$SCHEMA_JSON" ]; then return 0; fi
+  local proto_mtime
+  local schema_mtime
+  if [[ "$(uname)" == "Darwin" ]]; then
+    proto_mtime=$(stat -f %m "$PROTO_SRC")
+    schema_mtime=$(stat -f %m "$SCHEMA_JSON")
+  else
+    proto_mtime=$(stat -c %Y "$PROTO_SRC")
+    schema_mtime=$(stat -c %Y "$SCHEMA_JSON")
+  fi
+  [ "$proto_mtime" -gt "$schema_mtime" ]
 }
 
 echo "[build_docs] Checking schema freshness..." >&2
