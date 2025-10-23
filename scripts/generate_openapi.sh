@@ -2,7 +2,7 @@
 set -euo pipefail
 # Generate OpenAPI (Swagger v2) using protoc + protoc-gen-openapiv2.
 # Requirements: protoc, protoc-gen-openapiv2 on PATH.
-#!/bin/bash
+
 # Output (ephemeral): a temporary a2a.swagger.json used only for JSON Schema extraction.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -51,6 +51,6 @@ jq -n --argjson defs "$SCHEMA_CONTENT" '{
   description: "Non-normative JSON Schema bundle extracted from generated OpenAPI document (proto-derived).",
   version: "v1",
   definitions: $defs
-}' > "$OUTPUT"
+}' | jq . > "$OUTPUT"
 
 echo "[extract_json_schema] Wrote schemas to $OUTPUT" >&2
