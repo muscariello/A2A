@@ -270,7 +270,8 @@ The operation MUST establish a webhook endpoint for task completion notification
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
 - **gRPC**: [`CreateTaskPushNotificationConfig`](#grpc-push-notification-operations)
--- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+ - **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+ <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
 #### 3.1.9. Get Push Notification Config
 <span id="76-taskspushnotificationconfigget"></span>
@@ -316,7 +317,12 @@ The operation MUST return all active push notification configurations for the sp
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#937-push-notification-configuration-methods)
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
--- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+
+#### 3.1.11. Delete Push Notification Config
+
+Removes a push notification configuration for a task.
+
 **Inputs:**
 
 - `taskId`: Unique identifier of the task
@@ -1649,11 +1655,10 @@ data: {"artifactUpdate": { /* TaskArtifactUpdateEvent */ }}
 
 data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
 ```
-
 **Referenced Objects:** [`Task`](#411-task), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent)
-
+<span id="4192-taskstatusupdateevent"></span><span id="4193-taskartifactupdateevent"></span>
 Streaming responses are simple, linearly ordered sequences: first a `Task` (or single `Message`), then zero or more status or artifact update events until the task reaches a terminal or interrupted state, at which point the stream closes. Implementations SHOULD avoid re-ordering events and MAY optionally resend a final `Task` snapshot before closing.
----
+
 ---
 
 ## Appendix A. Migration & Legacy Compatibility
@@ -1737,4 +1742,3 @@ Server Implementations MAY:
 Once the proto→schema generation pipeline lands, this appendix will be partially auto-generated (legacy mapping table sourced from a maintained manifest). Until then, edits MUST be manual and reviewed in PRs affecting `a2a.proto`.
 
 ---
->>>>>>> 04851d3 (tooling(spec): stacked schema generation & docs integration without rebasing)
