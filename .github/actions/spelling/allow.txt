@@ -226,6 +226,7 @@ langgraph
 linenums
 linkedin
 linting
+listtasks
 llm
 llms
 lng
