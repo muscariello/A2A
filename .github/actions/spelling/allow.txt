@@ -136,6 +136,7 @@ amannn
 aparse
 aproject
 aprotocol
+argjson
 arxiv
 askmarvin
 asyncclick
@@ -195,11 +196,13 @@ geneknit
 genkit
 genproto
 georoute
+gettask
 gettickets
 gitvote
 gle
 googleai
 googleapi
+googleapis
 googleblog
 gpt
 gstatic
@@ -226,6 +229,7 @@ linting
 llm
 llms
 lng
+logtostderr
 marvin
 mcp
 mesop
@@ -247,6 +251,8 @@ oidc
 ollama
 oneof
 openapis
+openapiv
+openapiv2
 oreilly
 postgres
 postgresql
@@ -262,6 +268,7 @@ pytype
 pyupgrade
 qwq
 rcm
+regen
 repomapr
 reportgen
 reposted
@@ -269,6 +276,7 @@ rst
 rvelicheti
 scm
 sllm
+sourced
 sourcing
 squidfunk
 srcs
@@ -280,6 +288,7 @@ svn
 systemctl
 tagwords
 tasksget
+taskslist
 taskssend
 taskstate
 taskstatus
@@ -292,6 +301,7 @@ tracestate
 ugc
 undoc
 utm
+venv-docs
 versioned
 vnd
 voa

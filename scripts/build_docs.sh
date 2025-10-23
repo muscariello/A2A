@@ -11,8 +11,8 @@ SCHEMA_JSON_SITE_DIR="$ROOT_DIR/docs/spec-json"
 SCHEMA_JSON_SITE_FILE="$SCHEMA_JSON_SITE_DIR/a2a.json"
 PROTO_SRC="$ROOT_DIR/specification/grpc/a2a.proto"
 TS_SRC="$ROOT_DIR/types/src/types.ts"
-OPENAPI_DIR="$ROOT_DIR/specification/grpc/openapi"
-OPENAPI_FILE_V2="$OPENAPI_DIR/a2a.swagger.json"
+OPENAPI_TMP=$(mktemp)
+OPENAPI_FILE_V2="$OPENAPI_TMP"
 EXTRACT_SCRIPT="$ROOT_DIR/scripts/extract_json_schema.sh"
 
 regen_needed() {
@@ -27,8 +27,8 @@ regen_needed() {
 echo "[build_docs] Checking schema freshness..." >&2
 echo "[build_docs] Regenerating a2a.json from proto (OpenAPI -> definitions)" >&2
 if [ -x "$ROOT_DIR/scripts/generate_openapi.sh" ]; then
-  bash "$ROOT_DIR/scripts/generate_openapi.sh" || echo "[build_docs] Warning: OpenAPI generation failed" >&2
-  if [ -f "$OPENAPI_FILE_V2" ]; then
+  OPENAPI_OUTPUT="$OPENAPI_FILE_V2" bash "$ROOT_DIR/scripts/generate_openapi.sh" || echo "[build_docs] Warning: OpenAPI generation failed" >&2
+  if [ -s "$OPENAPI_FILE_V2" ]; then
     if [ -x "$EXTRACT_SCRIPT" ]; then
       bash "$EXTRACT_SCRIPT" "$OPENAPI_FILE_V2" "$SCHEMA_JSON" || echo "[build_docs] Warning: schema extraction failed" >&2
       # Copy into docs/ tree so MkDocs can publish the ephemeral artifact.
@@ -43,7 +43,7 @@ if [ -x "$ROOT_DIR/scripts/generate_openapi.sh" ]; then
       echo "[build_docs] Extraction script not executable: $EXTRACT_SCRIPT" >&2
     fi
   else
-    echo "[build_docs] OpenAPI file not found at $OPENAPI_FILE_V2" >&2
+    echo "[build_docs] OpenAPI swagger not produced (expected at $OPENAPI_FILE_V2)" >&2
   fi
 else
   echo "[build_docs] generate_openapi.sh missing or not executable; skipping proto-derived schema generation." >&2

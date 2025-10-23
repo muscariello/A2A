@@ -8,7 +8,8 @@ site_dir: site
 edit_uri: edit/main/docs/
 
 extra:
-  a2a_version: dev
+  a2a_version: !ENV [MIKE_VERSION, "dev"]
+
   analytics:
     provider: google
     property: G-RB39M83WHB
