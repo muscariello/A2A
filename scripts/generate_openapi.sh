@@ -2,11 +2,12 @@
 set -euo pipefail
 # Generate OpenAPI (Swagger v2) using protoc + protoc-gen-openapiv2.
 # Requirements: protoc, protoc-gen-openapiv2 on PATH.
-# Output: specification/grpc/openapi/a2a.swagger.json
+#!/bin/bash
+# Output (ephemeral): a temporary a2a.swagger.json used only for JSON Schema extraction.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROTO_DIR="$ROOT_DIR/specification/grpc"
-OUT_DIR="$PROTO_DIR/openapi"
+OUT_DIR="${OPENAPI_TMP_DIR:-$(mktemp -d)}"
 PROTO_FILE="$PROTO_DIR/a2a.proto"
 GOOGLEAPIS_DIR="${GOOGLEAPIS_DIR:-}"
 
@@ -19,6 +20,7 @@ if ! command -v protoc-gen-openapiv2 >/dev/null 2>&1; then
   exit 1
 fi
 
+# Ensure output dir exists (mktemp already does, but in case OPENAPI_TMP_DIR is provided)
 mkdir -p "$OUT_DIR"
 
 # Include googleapis for annotations; attempt common locations.
@@ -60,4 +62,10 @@ if [[ -z "$SWAGGER_JSON" ]]; then
   exit 1
 fi
 
-echo "[generate_openapi] Generated OpenAPI: $SWAGGER_JSON" >&2
+echo "[generate_openapi] Generated OpenAPI (ephemeral): $SWAGGER_JSON" >&2
+
+# If caller exported OPENAPI_OUTPUT, copy swagger there (used by build_docs for extraction) without committing.
+if [ -n "${OPENAPI_OUTPUT:-}" ]; then
+  cp "$SWAGGER_JSON" "$OPENAPI_OUTPUT"
+  echo "[generate_openapi] Copied swagger to $OPENAPI_OUTPUT" >&2
+fi
