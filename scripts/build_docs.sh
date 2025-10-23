@@ -17,36 +17,53 @@ EXTRACT_SCRIPT="$ROOT_DIR/scripts/extract_json_schema.sh"
 
 regen_needed() {
   if [ ! -f "$SCHEMA_JSON" ]; then return 0; fi
+
+  # Use portable stat command (works on both macOS and Linux)
+  local stat_format
+  if stat -c %Y "$SCHEMA_JSON" >/dev/null 2>&1; then
+    # Linux/GNU stat
+    stat_format="-c %Y"
+  else
+    # macOS/BSD stat
+    stat_format="-f %m"
+  fi
+
   local newest_source
-  newest_source=$(stat -f %m "$PROTO_SRC" "$TS_SRC" | sort -nr | head -n1)
+  newest_source=$(stat $stat_format "$PROTO_SRC" "$TS_SRC" 2>/dev/null | sort -nr | head -n1)
   local schema_time
-  schema_time=$(stat -f %m "$SCHEMA_JSON")
+  schema_time=$(stat $stat_format "$SCHEMA_JSON" 2>/dev/null)
+
   [ "$newest_source" -gt "$schema_time" ]
 }
 
 echo "[build_docs] Checking schema freshness..." >&2
-echo "[build_docs] Regenerating a2a.json from proto (OpenAPI -> definitions)" >&2
-if [ -x "$ROOT_DIR/scripts/generate_openapi.sh" ]; then
-  OPENAPI_OUTPUT="$OPENAPI_FILE_V2" bash "$ROOT_DIR/scripts/generate_openapi.sh" || echo "[build_docs] Warning: OpenAPI generation failed" >&2
-  if [ -s "$OPENAPI_FILE_V2" ]; then
-    if [ -x "$EXTRACT_SCRIPT" ]; then
-      bash "$EXTRACT_SCRIPT" "$OPENAPI_FILE_V2" "$SCHEMA_JSON" || echo "[build_docs] Warning: schema extraction failed" >&2
-      # Copy into docs/ tree so MkDocs can publish the ephemeral artifact.
-      if [ -f "$SCHEMA_JSON" ]; then
-        mkdir -p "$SCHEMA_JSON_SITE_DIR"
-        cp "$SCHEMA_JSON" "$SCHEMA_JSON_SITE_FILE"
-        echo "[build_docs] Published schema to $SCHEMA_JSON_SITE_FILE" >&2
+if regen_needed; then
+  echo "[build_docs] Regenerating a2a.json from proto (OpenAPI -> definitions)" >&2
+  if [ -x "$ROOT_DIR/scripts/generate_openapi.sh" ]; then
+    OPENAPI_OUTPUT="$OPENAPI_FILE_V2" bash "$ROOT_DIR/scripts/generate_openapi.sh" || echo "[build_docs] Warning: OpenAPI generation failed" >&2
+    if [ -s "$OPENAPI_FILE_V2" ]; then
+      if [ -x "$EXTRACT_SCRIPT" ]; then
+        bash "$EXTRACT_SCRIPT" "$OPENAPI_FILE_V2" "$SCHEMA_JSON" || echo "[build_docs] Warning: schema extraction failed" >&2
       else
-        echo "[build_docs] Schema file missing after extraction: $SCHEMA_JSON" >&2
+        echo "[build_docs] Extraction script not executable: $EXTRACT_SCRIPT" >&2
       fi
     else
-      echo "[build_docs] Extraction script not executable: $EXTRACT_SCRIPT" >&2
+      echo "[build_docs] OpenAPI swagger not produced (expected at $OPENAPI_FILE_V2)" >&2
     fi
   else
-    echo "[build_docs] OpenAPI swagger not produced (expected at $OPENAPI_FILE_V2)" >&2
+    echo "[build_docs] generate_openapi.sh missing or not executable; skipping proto-derived schema generation." >&2
   fi
 else
-  echo "[build_docs] generate_openapi.sh missing or not executable; skipping proto-derived schema generation." >&2
+  echo "[build_docs] Schema is up-to-date, skipping regeneration" >&2
+fi
+
+# Always ensure schema is available in docs directory for MkDocs
+if [ -f "$SCHEMA_JSON" ]; then
+  mkdir -p "$SCHEMA_JSON_SITE_DIR"
+  cp "$SCHEMA_JSON" "$SCHEMA_JSON_SITE_FILE"
+  echo "[build_docs] Published schema to $SCHEMA_JSON_SITE_FILE" >&2
+else
+  echo "[build_docs] Warning: Schema file not found at $SCHEMA_JSON - MkDocs may fail" >&2
 fi
 
 
