@@ -270,7 +270,7 @@ The operation MUST establish a webhook endpoint for task completion notification
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
 - **gRPC**: [`CreateTaskPushNotificationConfig`](#grpc-push-notification-operations)
- - **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
 #### 3.1.9. Get Push Notification Config
