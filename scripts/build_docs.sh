@@ -12,6 +12,7 @@ SCHEMA_JSON_SITE_FILE="$SCHEMA_JSON_SITE_DIR/a2a.json"
 PROTO_SRC="$ROOT_DIR/specification/grpc/a2a.proto"
 TS_SRC="$ROOT_DIR/types/src/types.ts"
 OPENAPI_TMP=$(mktemp)
+trap 'rm -f "$OPENAPI_TMP"' EXIT
 OPENAPI_FILE_V2="$OPENAPI_TMP"
 EXTRACT_SCRIPT="$ROOT_DIR/scripts/extract_json_schema.sh"
 
