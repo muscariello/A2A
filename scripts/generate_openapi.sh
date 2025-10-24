@@ -7,7 +7,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROTO_DIR="$ROOT_DIR/specification/grpc"
-OUT_DIR="${OPENAPI_TMP_DIR:-$(mktemp -d)}"
+OUT_DIR="${OPENAPI_TMP_DIR:-}"
+if [ -z "$OUT_DIR" ]; then
+  OUT_DIR=$(mktemp -d)
+  trap 'rm -rf "$OUT_DIR"' EXIT
+fi
 PROTO_FILE="$PROTO_DIR/a2a.proto"
 GOOGLEAPIS_DIR="${GOOGLEAPIS_DIR:-}"
 
