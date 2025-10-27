@@ -440,7 +440,7 @@ The file `specification/grpc/a2a.proto` is the single authoritative normative de
 
 Change Control and Deprecation Lifecycle:
 
-- Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available for at least one subsequent minor release.
+- Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available until the next major release.
 - Documentation: This specification MUST include a Migration Appendix (Appendix A) enumerating legacy→current name mappings with planned removal versions.
 - Anchors: Legacy documentation anchors MUST be preserved (as hidden HTML anchors) to avoid breaking inbound links.
 - SDK/Schema Aliases: SDKs and JSON Schemas SHOULD provide deprecated alias types/definitions to maintain backward compatibility.
@@ -831,15 +831,15 @@ When an agent supports multiple transports, all supported transports **MUST**:
 
 ### 5.3. Method Mapping Reference
 
-| Functionality | JSON-RPC Method | gRPC Method | REST Endpoint |
-|:-------------|:---------------|:------------|:-------------|
-| Send message | `message/send` | `SendMessage` | `POST /v1/message:send` |
-| Stream message | `message/stream` | `SendStreamingMessage` | `POST /v1/message:stream` |
-| Get task | `tasks/get` | `GetTask` | `GET /v1/tasks/{id}` |
-| List tasks | `tasks/list` | `ListTasks` | `GET /v1/tasks` |
-| Cancel task | `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` |
-| Resubscribe to task | `tasks/resubscribe` | `TaskResubscription` | `POST /v1/tasks/{id}:resubscribe` |
-| Get agent card | `agent/getAuthenticatedExtendedCard` | `GetExtendedAgentCard` | `GET /v1/extendedAgentCard` |
+| Functionality       | JSON-RPC Method                      | gRPC Method            | REST Endpoint                     |
+| :------------------ | :----------------------------------- | :--------------------- | :-------------------------------- |
+| Send message        | `message/send`                       | `SendMessage`          | `POST /v1/message:send`           |
+| Stream message      | `message/stream`                     | `SendStreamingMessage` | `POST /v1/message:stream`         |
+| Get task            | `tasks/get`                          | `GetTask`              | `GET /v1/tasks/{id}`              |
+| List tasks          | `tasks/list`                         | `ListTasks`            | `GET /v1/tasks`                   |
+| Cancel task         | `tasks/cancel`                       | `CancelTask`           | `POST /v1/tasks/{id}:cancel`      |
+| Resubscribe to task | `tasks/resubscribe`                  | `TaskResubscription`   | `POST /v1/tasks/{id}:resubscribe` |
+| Get agent card      | `agent/getAuthenticatedExtendedCard` | `GetExtendedAgentCard` | `GET /v1/extendedAgentCard`       |
 
 ## 6. Common Workflows & Examples
 
