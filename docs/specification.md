@@ -97,6 +97,8 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 The agent MAY create a new task to process the provided message asynchronously or MAY return a direct message response for simple interactions. The operation MUST return immediately with either task information or response message. Task processing MAY continue asynchronously after the response when a [`Task`](#411-task) is returned.
 
+Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
+
 **Transport Implementations:**
 
 - **JSON-RPC**: [`message/send`](#931-messagesend)
@@ -123,6 +125,8 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 The operation MUST establish a streaming connection for real-time updates. The agent MAY return a [`Task`](#411-task) for complex processing with status/artifact updates or MAY return a [`Message`](#414-message) for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results. The stream MUST terminate when processing reaches a final state.
 
+Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
+
 **Transport Implementations:**
 
 - **JSON-RPC**: [`message/stream`](#932-messagestream)
@@ -131,19 +135,16 @@ The operation MUST establish a streaming connection for real-time updates. The a
 
 #### 3.1.3. Get Task
 
-Retrieves current information about an existing task.
+Retrieves the current state (including status, artifacts, and optionally history) of a previously initiated task. This is typically used for polling the status of a task initiated with message/send, or for fetching the final state of a task after being notified via a push notification or after an SSE stream has ended.
 
 **Inputs:**
 
 - `taskId`: Unique identifier of the task to retrieve
+- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#332-history-length-semantics) for details)
 
 **Outputs:**
 
 - [`Task`](#411-task): Current state and artifacts of the requested task
-
-**Behavior:**
-
-The operation MUST return the current task state and any available artifacts. This operation SHOULD be used to support polling-based clients that don't use streaming.
 
 **Transport Implementations:**
 
@@ -153,7 +154,7 @@ The operation MUST return the current task state and any available artifacts. Th
 
 #### 3.1.4. List Tasks
 
-Retrieves a list of tasks associated with the current client session or context.
+Retrieves a list of tasks with optional filtering and pagination capabilities. This method allows clients to discover and manage multiple tasks across different contexts or with specific status criteria.
 
 **Inputs:**
 
@@ -161,18 +162,31 @@ Retrieves a list of tasks associated with the current client session or context.
 - `status` (optional): Filter tasks by their current status state
 - `pageSize` (optional): Maximum number of tasks to return (must be between 1 and 100, defaults to 50)
 - `pageToken` (optional): Token for pagination from a previous response
-- `historyLength` (optional): Number of recent messages to include in each task's history (defaults to 0)
+- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#332-history-length-semantics) for details, defaults to 0)
 - `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
 - `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
+- `metadata` (optional): Request-specific metadata for extensions or custom parameters
+
+When includeArtifacts is false (the default), the artifacts field MUST be omitted entirely from each Task object in the response. The field should not be present as an empty array or null value. When includeArtifacts is true, the artifacts field should be included with its actual content (which may be an empty array if the task has no artifacts).
 
 **Outputs:**
 
-- Array of [`Task`](#411-task) objects
-- Pagination information including `nextPageToken` for retrieving additional results
+- `tasks`: Array of [`Task`](#411-task) objects matching the specified criteria
+- `totalSize`: Total number of tasks available (before pagination)
+- `pageSize`: Maximum number of tasks returned in this response
+- `nextPageToken`: Token for retrieving the next page of results (empty if no more results)
+
+Note on nextPageToken: The nextPageToken field MUST always be present in the response. When there are no more results to retrieve (i.e., this is the final page), the field MUST be set to an empty string (""). Clients should check for an empty string to determine if more pages are available.
 
 **Behavior:**
 
 The operation MUST return only tasks visible to the authenticated client and MUST use cursor-based pagination for performance and consistency. Tasks MUST be sorted by last update time in descending order. Implementations MUST implement appropriate authorization scoping to ensure clients can only access authorized tasks.
+
+Pagination Strategy: This method uses cursor-based pagination (via pageToken/nextPageToken) rather than offset-based pagination for better performance and consistency, especially with large datasets. Cursor-based pagination avoids the "deep pagination problem" where skipping large numbers of records becomes inefficient for databases. This approach is consistent with the gRPC specification, which also uses cursor-based pagination (page_token/next_page_token).
+
+Ordering: Implementations MUST return tasks sorted by their last update time in descending order (most recently updated tasks first). This ensures consistent pagination and allows clients to efficiently monitor recent task activity.
+
+Security Note: Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
 
 **Transport Implementations:**
 
@@ -182,7 +196,7 @@ The operation MUST return only tasks visible to the authenticated client and MUS
 
 #### 3.1.5. Cancel Task
 
-Requests cancellation of an active task.
+Requests the cancellation of an ongoing task. The server will attempt to cancel the task, but success is not guaranteed (e.g., the task might have already completed or failed, or cancellation might not be supported at its current stage).
 
 **Inputs:**
 
@@ -192,9 +206,6 @@ Requests cancellation of an active task.
 
 - Updated [`Task`](#411-task) with cancellation status
 
-**Behavior:**
-
-The operation SHOULD attempt to stop task processing and MUST return the updated task state. Success depends on the task's current state and agent capabilities. The agent MAY refuse cancellation for tasks that cannot be safely interrupted.
 
 **Transport Implementations:**
 
@@ -203,6 +214,7 @@ The operation SHOULD attempt to stop task processing and MUST return the updated
 - **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1122-task-operations)
 
 #### 3.1.6. Resubscribe to Task
+<span id="79-tasksresubscribe"></span><span id="1035-taskresubscription"></span>
 
 Establishes a streaming connection to resume receiving updates for a specific task that was originally created by a streaming operation.
 
@@ -227,29 +239,33 @@ The operation MUST enable real-time monitoring of task progress but can only be 
 
 #### 3.1.7. Get Agent Card
 
-Retrieves the agent's capability and configuration information.
+Retrieves a potentially more detailed version of the Agent Card after the client has authenticated. This endpoint is available only if `AgentCard.supportsAuthenticatedExtendedCard` is `true`.
 
 **Inputs:**
 
-- None (operates on authenticated agent context)
+- None (no parameters required)
 
 **Outputs:**
 
-- [`AgentCard`](#441-agentcard): Complete agent metadata including capabilities, supported transports, and authentication schemes
+- [`AgentCard`](#441-agentcard): A complete Agent Card object, which may contain additional details or skills not present in the public card
 
 **Behavior:**
 
-The operation MUST return public agent information and MAY include different details based on client authentication level. This operation is essential for agent discovery and capability negotiation.
+- **Authentication**: The client MUST authenticate the request using one of the schemes declared in the public `AgentCard.securitySchemes` and `AgentCard.security` fields.
+- **Extended Information**: The operation MAY return different details based on client authentication level, including additional skills, capabilities, or configuration not available in the public Agent Card.
+- **Card Replacement**: Clients retrieving this authenticated card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
+- **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
 
 **Transport Implementations:**
 
 - **JSON-RPC**: [`agent/getAuthenticatedExtendedCard`](#938-agentgetauthenticatedextendedcard)
-- **gRPC**: [`GetAgentCard`](#103-core-methods)
-- **HTTP/REST**: [`GET /v1/card`](#1124-agent-card)
+- **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
+- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
 
-#### 3.1.8. Create Push Notification Config
+#### 3.1.8. Set or Update Push Notification Config
+<span id="75-taskspushnotificationconfigset"></span>
 
-Creates a push notification configuration for a task to receive asynchronous updates.
+Creates or updates a push notification configuration for a task to receive asynchronous updates.
 
 **Inputs:**
 
@@ -267,10 +283,12 @@ The operation MUST establish a webhook endpoint for task completion notification
 **Transport Implementations:**
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
-- **gRPC**: [`CreateTaskPushNotificationConfig`](#grpc-push-notification-operations)
+- **gRPC**: [`SetTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+ <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
 #### 3.1.9. Get Push Notification Config
+<span id="76-taskspushnotificationconfigget"></span>
 
 Retrieves an existing push notification configuration for a task.
 
@@ -375,7 +393,20 @@ Configuration for send message requests.
 --8<-- "specification/grpc/a2a.proto:MessageSendConfiguration"
 ```
 
-### 3.3.2. Metadata
+#### 3.3.2. History Length Semantics
+
+The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
+
+- **Unset/undefined**: No limit imposed; server returns its default amount of history (implementation-defined, may be all history)
+- **0**: No history should be returned; the `history` field SHOULD be omitted or empty
+- **> 0**: Return at most this many recent messages from the task's history
+
+**Server Requirements:**
+- Servers MAY return fewer history items than requested (e.g., if fewer items exist or for performance reasons)
+- Servers MUST NOT return more history items than requested when a positive limit is specified
+- When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
+
+### 3.3.3. Metadata
 
 A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#extensions) can be used to strongly type metadata values for specific use cases.
 
@@ -403,8 +434,29 @@ This specification defines three standard transport protocols: [JSON-RPC Transpo
 
 The A2A protocol defines a canonical data model using Protocol Buffers. All transport implementations **MUST** provide functionally equivalent representations of these data structures.
 
+"Normative Source" Principle:
+
+The file `specification/grpc/a2a.proto` is the single authoritative normative definition of all protocol data objects and request/response messages. A generated JSON artifact (`specification/json/a2a.json`, produced at build time and not committed) MAY be published for convenience to tooling and the website, but it is a non-normative build artifact. SDK language bindings, schemas, and any other derived forms **MUST** be regenerated from the proto (directly or via code generation) rather than edited manually.
+
+Change Control and Deprecation Lifecycle:
+
+- Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available until the next major release.
+- Documentation: This specification MUST include a Migration Appendix (Appendix A) enumerating legacy→current name mappings with planned removal versions.
+- Anchors: Legacy documentation anchors MUST be preserved (as hidden HTML anchors) to avoid breaking inbound links.
+- SDK/Schema Aliases: SDKs and JSON Schemas SHOULD provide deprecated alias types/definitions to maintain backward compatibility.
+- Removal: A deprecated name SHOULD NOT be removed earlier than two minor versions after introduction of its replacement and MUST appear in at least one stable tagged release containing both forms.
+
+Automated Generation:
+
+The documentation build generates `specification/json/a2a.json` on-the-fly (the file is not tracked in source control). Future improvements may publish an OpenAPI v3 + JSON Schema bundle for enhanced tooling.
+
+Rationale:
+
+Centering the proto file as the normative source ensures transport neutrality, reduces specification drift, and provides a deterministic evolution path for the ecosystem.
+
 ### 4.1. Core Objects
 
+<span id="61-task-object"></span>
 #### 4.1.1. Task
 
 Represents the stateful unit of work being processed by the A2A Server for an A2A Client.
@@ -421,6 +473,7 @@ Represents the current state and associated context of a Task.
 --8<-- "specification/grpc/a2a.proto:TaskStatus"
 ```
 
+<span id="63-taskstate-enum"></span>
 #### 4.1.3. TaskState
 
 Defines the possible lifecycle states of a Task.
@@ -430,6 +483,7 @@ Defines the possible lifecycle states of a Task.
 ```
 
 #### 4.1.4. Message
+<span id="4241-messagesendconfiguration"></span>
 
 Represents a single communication turn between a client and an agent.
 
@@ -471,6 +525,8 @@ Represents a tangible output generated by the agent during a task.
 
 ### 4.2. Streaming Events
 
+<span id="4192-taskstatusupdateevent"></span>
+<span id="722-taskstatusupdateevent-object"></span>
 #### 4.2.1. TaskStatusUpdateEvent
 
 Carries information about a change in task status during streaming.
@@ -479,6 +535,8 @@ Carries information about a change in task status during streaming.
 --8<-- "specification/grpc/a2a.proto:TaskStatusUpdateEvent"
 ```
 
+<span id="4193-taskartifactupdateevent"></span>
+<span id="723-taskartifactupdateevent-object"></span>
 #### 4.2.2. TaskArtifactUpdateEvent
 
 Carries a new or updated artifact generated during streaming.
@@ -490,6 +548,7 @@ Carries a new or updated artifact generated during streaming.
 ### 4.3. Push Notification Objects
 
 #### 4.3.1. PushNotificationConfig
+<span id="68-pushnotificationconfig-object"></span>
 
 Configuration for setting up push notifications for task updates.
 
@@ -515,7 +574,10 @@ Defines authentication details for push notifications.
 
 ### 4.4. Agent Discovery Objects
 
+<span id="441-agentcard"></span>
+<span id="710-agentgetauthenticatedextendedcard"></span>
 #### 4.4.1. AgentCard
+<span id="421-agentcard"></span>
 
 The primary metadata document describing an agent's capabilities and interface.
 
@@ -769,15 +831,15 @@ When an agent supports multiple transports, all supported transports **MUST**:
 
 ### 5.3. Method Mapping Reference
 
-| Functionality | JSON-RPC Method | gRPC Method | REST Endpoint |
-|:-------------|:---------------|:------------|:-------------|
-| Send message | `message/send` | `SendMessage` | `POST /v1/message:send` |
-| Stream message | `message/stream` | `SendStreamingMessage` | `POST /v1/message:stream` |
-| Get task | `tasks/get` | `GetTask` | `GET /v1/tasks/{id}` |
-| List tasks | `tasks/list` | `ListTasks` | `GET /v1/tasks` |
-| Cancel task | `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` |
-| Resubscribe to task | `tasks/resubscribe` | `TaskResubscription` | `POST /v1/tasks/{id}:resubscribe` |
-| Get agent card | `agent/getAuthenticatedExtendedCard` | `GetAgentCard` | `GET /v1/card` |
+| Functionality       | JSON-RPC Method                      | gRPC Method            | REST Endpoint                     |
+| :------------------ | :----------------------------------- | :--------------------- | :-------------------------------- |
+| Send message        | `message/send`                       | `SendMessage`          | `POST /v1/message:send`           |
+| Stream message      | `message/stream`                     | `SendStreamingMessage` | `POST /v1/message:stream`         |
+| Get task            | `tasks/get`                          | `GetTask`              | `GET /v1/tasks/{id}`              |
+| List tasks          | `tasks/list`                         | `ListTasks`            | `GET /v1/tasks`                   |
+| Cancel task         | `tasks/cancel`                       | `CancelTask`           | `POST /v1/tasks/{id}:cancel`      |
+| Resubscribe to task | `tasks/resubscribe`                  | `TaskResubscription`   | `POST /v1/tasks/{id}:resubscribe` |
+| Get agent card      | `agent/getAuthenticatedExtendedCard` | `GetExtendedAgentCard` | `GET /v1/extendedAgentCard`       |
 
 ## 6. Common Workflows & Examples
 
@@ -1205,6 +1267,7 @@ Cancels an ongoing task.
 ```
 
 #### 9.3.6. `tasks/resubscribe`
+<span id="936-tasksresubscribe"></span>
 
 Reconnects to an SSE stream for an ongoing task.
 
@@ -1248,13 +1311,13 @@ A2A defines a set of errors that are specific to the semantics of the A2A protoc
 
 **A2A-Specific Errors:**
 
-| Error Name | Description |
-|:-----------|:------------|
-| `TaskNotFoundError` | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged. |
-| `TaskNotCancelableError` | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
-| `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`). |
-| `UnsupportedOperationError` | The requested operation or a specific aspect of it is not supported by this server agent implementation. |
-| `ContentTypeNotSupportedError` | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked. |
+| Error Name                          | Description                                                                                                                                                       |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TaskNotFoundError`                 | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged.                       |
+| `TaskNotCancelableError`            | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
+| `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`).      |
+| `UnsupportedOperationError`         | The requested operation or a specific aspect of it is not supported by this server agent implementation.                                                          |
+| `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
 
 ## 10. gRPC Transport
 
@@ -1277,11 +1340,11 @@ service A2AService {
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc CancelTask(CancelTaskRequest) returns (Task);
   rpc TaskResubscription(TaskResubscriptionRequest) returns (stream StreamResponse);
-  rpc CreateTaskPushNotificationConfig(CreateTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
+  rpc SetTaskPushNotificationConfig(SetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc GetTaskPushNotificationConfig(GetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc ListTaskPushNotificationConfig(ListTaskPushNotificationConfigRequest) returns (ListTaskPushNotificationConfigResponse);
   rpc DeleteTaskPushNotificationConfig(DeleteTaskPushNotificationConfigRequest) returns (google.protobuf.Empty);
-  rpc GetAgentCard(GetAgentCardRequest) returns (AgentCard);
+  rpc GetExtendedAgentCard(GetExtendedAgentCardRequest) returns (AgentCard);
 }
 ```
 
@@ -1359,13 +1422,13 @@ Resubscribe to task updates via streaming.
 
 **Response:** Server streaming [`StreamResponse`](#stream-response) objects.
 
-#### 10.3.7. CreateTaskPushNotificationConfig
+#### 10.3.7. SetTaskPushNotificationConfig
 
 Creates a push notification configuration for a task.
 
 **Request:**
 ```proto
---8<-- "specification/grpc/a2a.proto:CreateTaskPushNotificationConfigRequest"
+--8<-- "specification/grpc/a2a.proto:SetTaskPushNotificationConfigRequest"
 ```
 
 **Response:** See [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) object definition.
@@ -1406,13 +1469,13 @@ Removes a push notification configuration for a task.
 
 **Response:** `google.protobuf.Empty`
 
-#### 10.3.11. GetAgentCard
+#### 10.3.11. GetExtendedAgentCard
 
-Retrieves the agent's capability card.
+Retrieves the agent's extended capability card after authentication.
 
 **Request:**
 ```proto
---8<-- "specification/grpc/a2a.proto:GetAgentCardRequest"
+--8<-- "specification/grpc/a2a.proto:GetExtendedAgentCardRequest"
 ```
 
 **Response:** See [`AgentCard`](#441-agentcard) object definition.
@@ -1423,13 +1486,13 @@ A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for form
 
 #### 10.4.1. A2A Error Mappings
 
-| A2A Error Type | Description | gRPC Status Code |
-|:---------------|:------------|:-----------------|
-| `TaskNotFoundError` | Task ID not found | `NOT_FOUND` |
-| `TaskNotCancelableError` | Task not in cancelable state | `FAILED_PRECONDITION` |
-| `PushNotificationNotSupportedError` | Push notifications not supported | `UNIMPLEMENTED` |
-| `UnsupportedOperationError` | Operation not supported | `UNIMPLEMENTED` |
-| `ContentTypeNotSupportedError` | Unsupported content type | `INVALID_ARGUMENT` |
+| A2A Error Type                      | Description                      | gRPC Status Code      |
+| :---------------------------------- | :------------------------------- | :-------------------- |
+| `TaskNotFoundError`                 | Task ID not found                | `NOT_FOUND`           |
+| `TaskNotCancelableError`            | Task not in cancelable state     | `FAILED_PRECONDITION` |
+| `PushNotificationNotSupportedError` | Push notifications not supported | `UNIMPLEMENTED`       |
+| `UnsupportedOperationError`         | Operation not supported          | `UNIMPLEMENTED`       |
+| `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
 
 **Example Error Response:**
 
@@ -1502,7 +1565,7 @@ The HTTP+JSON transport provides a RESTful interface using standard HTTP methods
 
 #### 11.2.4. Agent Card
 
-- `GET /v1/card` - Get authenticated extended agent card
+- `GET /v1/extendedAgentCard` - Get authenticated extended agent card
 
 ### 11.3. Request/Response Format
 
@@ -1559,13 +1622,13 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 
 #### 11.5.1. A2A Error Mappings
 
-| A2A Error Type | HTTP Status Code | Error Code | Description |
-|:---------------|:-----------------|:-----------|:------------|
-| `TaskNotFoundError` | `404 Not Found` | `TASK_NOT_FOUND` | Task not found |
-| `TaskNotCancelableError` | `409 Conflict` | `TASK_NOT_CANCELABLE` | Task cannot be canceled |
-| `PushNotificationNotSupportedError` | `501 Not Implemented` | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
-| `UnsupportedOperationError` | `501 Not Implemented` | `OPERATION_NOT_SUPPORTED` | Operation not supported |
-| `ContentTypeNotSupportedError` | `415 Unsupported Media Type` | `CONTENT_TYPE_NOT_SUPPORTED` | Content type not supported |
+| A2A Error Type                      | HTTP Status Code             | Error Code                         | Description                      |
+| :---------------------------------- | :--------------------------- | :--------------------------------- | :------------------------------- |
+| `TaskNotFoundError`                 | `404 Not Found`              | `TASK_NOT_FOUND`                   | Task not found                   |
+| `TaskNotCancelableError`            | `409 Conflict`               | `TASK_NOT_CANCELABLE`              | Task cannot be canceled          |
+| `PushNotificationNotSupportedError` | `501 Not Implemented`        | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
+| `UnsupportedOperationError`         | `501 Not Implemented`        | `OPERATION_NOT_SUPPORTED`          | Operation not supported          |
+| `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `CONTENT_TYPE_NOT_SUPPORTED`       | Content type not supported       |
 
 #### 11.5.2. Error Response Format
 
@@ -1593,6 +1656,7 @@ A2A error responses **MUST** include a JSON error object with the following stru
 **Note:** Standard HTTP error handling (authentication, authorization, rate limiting, etc.) follows normal REST conventions and is not part of the A2A-specific error mapping.
 
 ### 11.6. Streaming
+<span id="stream-response"></span>
 
 REST streaming uses Server-Sent Events with the `data` field containing JSON serializations of the protocol data objects:
 
@@ -1618,5 +1682,90 @@ data: {"artifactUpdate": { /* TaskArtifactUpdateEvent */ }}
 
 data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
 ```
-
 **Referenced Objects:** [`Task`](#411-task), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent)
+<span id="4192-taskstatusupdateevent"></span><span id="4193-taskartifactupdateevent"></span>
+Streaming responses are simple, linearly ordered sequences: first a `Task` (or single `Message`), then zero or more status or artifact update events until the task reaches a terminal or interrupted state, at which point the stream closes. Implementations SHOULD avoid re-ordering events and MAY optionally resend a final `Task` snapshot before closing.
+
+---
+
+## Appendix A. Migration & Legacy Compatibility
+
+This appendix catalogs renamed protocol messages and objects, their legacy identifiers, and the planned deprecation/removal schedule. All legacy names and anchors MUST remain resolvable until the stated earliest removal version.
+
+| Legacy Name                                     | Current Name                              | Earliest Removal Version | Notes                                                  |
+| ----------------------------------------------- | ----------------------------------------- | ------------------------ | ------------------------------------------------------ |
+| `MessageSendParams`                             | `SendMessageRequest`                      | >= 0.5.0                 | Request payload rename for clarity (request vs params) |
+| `SendMessageSuccessResponse`                    | `SendMessageResponse`                     | >= 0.5.0                 | Unified success response naming                        |
+| `SendStreamingMessageSuccessResponse`           | `StreamResponse`                          | >= 0.5.0                 | Shorter, transport-agnostic streaming response         |
+| `SetTaskPushNotificationConfigRequest`          | `CreateTaskPushNotificationConfigRequest` | >= 0.5.0                 | Explicit creation intent                               |
+| `ListTaskPushNotificationConfigSuccessResponse` | `ListTaskPushNotificationConfigResponse`  | >= 0.5.0                 | Consistent response suffix removal                     |
+| `GetAuthenticatedExtendedCardRequest`           | `GetAgentCardRequest`                     | >= 0.5.0                 | Simplified, generalized naming                         |
+
+Planned Lifecycle (example timeline; adjust per release strategy):
+
+1. 0.3.x: New names introduced; legacy names documented; aliases added.
+2. 0.4.x: Legacy names marked "deprecated" in SDKs and schemas; warning notes added.
+3. ≥0.5.0: Legacy names eligible for removal after review; migration appendix updated.
+
+### A.1 Legacy Documentation Anchors
+
+Hidden anchor spans preserve old inbound links:
+
+<!-- Legacy inbound link compatibility anchors (old spec numbering & names) -->
+<span id="32-supported-transport-protocols"></span>
+<span id="324-transport-extensions"></span>
+<span id="35-method-mapping-and-naming-conventions"></span>
+<span id="5-agent-discovery-the-agent-card"></span>
+<span id="53-recommended-location"></span>
+<span id="55-agentcard-object-structure"></span>
+<span id="56-transport-declaration-and-url-relationships"></span>
+<span id="563-client-transport-selection-rules"></span>
+<span id="57-sample-agent-card"></span>
+<span id="6-protocol-data-objects"></span>
+<span id="61-task-object"></span>
+<span id="610-taskpushnotificationconfig-object"></span>
+<span id="611-json-rpc-structures"></span>
+<span id="612-jsonrpcerror-object"></span>
+<span id="63-taskstate-enum"></span>
+<span id="69-pushnotificationauthenticationinfo-object"></span>
+<span id="711-messagesendparams-object"></span>
+<span id="72-messagestream"></span>
+<span id="721-sendstreamingmessageresponse-object"></span>
+<span id="731-taskqueryparams-object"></span>
+<span id="741-listtasksparams-object"></span>
+<span id="742-listtasksresult-object"></span>
+<span id="751-taskidparams-object-for-taskscancel-and-taskspushnotificationconfigget"></span>
+<span id="77-taskspushnotificationconfigget"></span>
+<span id="771-gettaskpushnotificationconfigparams-object-taskspushnotificationconfigget"></span>
+<span id="781-listtaskpushnotificationconfigparams-object-taskspushnotificationconfiglist"></span>
+<span id="791-deletetaskpushnotificationconfigparams-object-taskspushnotificationconfigdelete"></span>
+<span id="8-error-handling"></span>
+<span id="82-a2a-specific-errors"></span>
+<!-- Legacy renamed message/object name anchors -->
+<span id="messagesendparams"></span>
+<span id="sendmessagesuccessresponse"></span>
+<span id="sendstreamingmessagesuccessresponse"></span>
+<span id="settaskpushnotificationconfigrequest"></span>
+<span id="listtaskpushnotificationconfigsuccessresponse"></span>
+<span id="getauthenticatedextendedcardrequest"></span>
+
+Each legacy span SHOULD be placed adjacent to the current object's heading (to be inserted during detailed object section edits). If an exact numeric-prefixed anchor existed (e.g., `#414-message`), add an additional span matching that historical form if known.
+
+### A.2 Migration Guidance
+
+Client Implementations SHOULD:
+
+- Prefer new names immediately for all new integrations.
+- Implement dual-handling where schemas/types permit (e.g., union type or backward-compatible decoder).
+- Log a warning when receiving legacy-named objects after the first deprecation announcement release.
+
+Server Implementations MAY:
+
+- Accept both legacy and current request message forms during the overlap period.
+- Emit only current form in responses (recommended) while providing explicit upgrade notes.
+
+### A.3 Future Automation
+
+Once the proto→schema generation pipeline lands, this appendix will be partially auto-generated (legacy mapping table sourced from a maintained manifest). Until then, edits MUST be manual and reviewed in PRs affecting `a2a.proto`.
+
+---
