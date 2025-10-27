@@ -40,7 +40,7 @@ nav:
   - Specification: specification.md
   - SDK Reference:
       - sdk/index.md
-      - Python: sdk/python/api/index.html
+      # - Python: sdk/python/api/index.html  # Disabled: target doesn't exist yet
   - Community: community.md
   - Partners: partners.md
   - Roadmap: roadmap.md
@@ -135,7 +135,7 @@ plugins:
   - macros
   - redirects:
       redirect_maps:
-        spec-json.md: spec-json/a2a.json
+        # spec-json.md: spec-json/a2a.json  # Disabled: redirect target may not exist if schema generation fails
         specification/overview.md: specification.md
         specification/agent-card.md: specification.md#5-agent-discovery-the-agent-card
         specification/agent-to-agent-communication.md: specification.md#6-protocol-data-objects
@@ -162,6 +162,6 @@ plugins:
         tutorials/python/8-agent-capabilities.md: tutorials/python/7-streaming-and-multiturn.md
         tutorials/python/9-ollama-agent.md: tutorials/python/7-streaming-and-multiturn.md
         tutorials/python/10-next-steps.md: tutorials/python/8-next-steps.md
-        sdk/python/: sdk/python/api/index.html
+        # sdk/python/: sdk/python/api/index.html  # Disabled: target doesn't exist yet
   - mike:
       canonical_version: latest
