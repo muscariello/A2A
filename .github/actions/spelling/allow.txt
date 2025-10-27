@@ -128,8 +128,8 @@ agentic
 agentskill
 agntcy
 agp
-aip
 ainvoke
+aip
 airbnb
 aldridge
 alloydb
@@ -225,7 +225,6 @@ konami
 kty
 langgraph
 linenums
-listtasks
 linkedin
 linting
 listtasks
