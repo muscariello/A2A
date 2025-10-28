@@ -551,12 +551,82 @@ Represents the stateful unit of work being processed by the A2A Server for an A2
 --8<-- "specification/grpc/a2a.proto:Task"
 ```
 
+**JSON Example:**
+```json
+{
+  "id": "task-12345",
+  "contextId": "context-67890",
+  "status": {
+    "state": "completed",
+    "message": {
+      "messageId": "msg-98765",
+      "role": "agent",
+      "parts": [
+        {
+          "text": "Task completed successfully"
+        }
+      ]
+    },
+    "timestamp": "2025-10-28T10:30:00Z"
+  },
+  "artifacts": [
+    {
+      "artifactId": "artifact-001",
+      "name": "Weather Report",
+      "description": "Current weather conditions",
+      "parts": [
+        {
+          "text": "Today will be sunny with a high of 75°F"
+        }
+      ],
+      "metadata": {
+        "location": "San Francisco",
+        "source": "weather-api"
+      }
+    }
+  ],
+  "history": [
+    {
+      "messageId": "msg-11111",
+      "role": "user",
+      "parts": [
+        {
+          "text": "What's the weather like today?"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "priority": "normal",
+    "startTime": "2025-10-28T10:29:45Z",
+    "endTime": "2025-10-28T10:30:00Z"
+  }
+}
+```
+
 #### 4.1.2. TaskStatus
 
 Represents the current state and associated context of a Task.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:TaskStatus"
+```
+
+**JSON Example:**
+```json
+{
+  "state": "working",
+  "message": {
+    "messageId": "msg-status-001",
+    "role": "agent",
+    "parts": [
+      {
+        "text": "Processing your request, gathering weather data..."
+      }
+    ]
+  },
+  "timestamp": "2025-10-28T10:29:55Z"
+}
 ```
 
 <span id="63-taskstate-enum"></span>
@@ -568,6 +638,23 @@ Defines the possible lifecycle states of a Task.
 --8<-- "specification/grpc/a2a.proto:TaskState"
 ```
 
+**JSON Examples:**
+```json
+// Terminal states
+"completed"
+"failed"
+"cancelled"
+"rejected"
+
+// Interrupted states
+"input-required"
+
+// Working states
+"submitted"
+"working"
+"auth-required"
+```
+
 #### 4.1.4. Message
 <span id="4241-messagesendconfiguration"></span>
 
@@ -575,6 +662,37 @@ Represents a single communication turn between a client and an agent.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:Message"
+```
+
+**JSON Example:**
+```json
+{
+  "messageId": "msg-12345",
+  "contextId": "context-67890",
+  "taskId": "task-98765",
+  "role": "user",
+  "parts": [
+    {
+      "text": "Find me restaurants near Times Square with good reviews"
+    },
+    {
+      "data": {
+        "preferences": {
+          "cuisine": ["italian", "american"],
+          "maxPrice": 50,
+          "rating": 4.0
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-10-28T10:30:00Z",
+    "userAgent": "A2A-Client/1.0"
+  },
+  "referenceTaskIds": [
+    "task-previous-001"
+  ]
+}
 ```
 
 #### 4.1.5. Part
@@ -585,12 +703,82 @@ Represents a distinct piece of content within a Message or Artifact.
 --8<-- "specification/grpc/a2a.proto:Part"
 ```
 
+**JSON Examples:**
+
+*Text Part:*
+```json
+{
+  "text": "Hello, how can I help you today?",
+  "metadata": {
+    "lang": "en",
+    "tone": "friendly"
+  }
+}
+```
+
+*File Part:*
+```json
+{
+  "file": {
+    "fileWithUri": "https://example.com/documents/report.pdf",
+    "mimeType": "application/pdf",
+    "name": "quarterly-report.pdf"
+  },
+  "metadata": {
+    "size": 2048576,
+    "uploadedAt": "2025-10-28T10:30:00Z"
+  }
+}
+```
+
+*Data Part:*
+```json
+{
+  "data": {
+    "temperature": 72.5,
+    "humidity": 45,
+    "conditions": "sunny",
+    "location": {
+      "city": "San Francisco",
+      "coordinates": {
+        "lat": 37.7749,
+        "lng": -122.4194
+      }
+    }
+  },
+  "metadata": {
+    "source": "weather-api",
+    "timestamp": "2025-10-28T10:30:00Z"
+  }
+}
+```
+
 #### 4.1.6. FilePart
 
 Represents file-based content within a Part.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:FilePart"
+```
+
+**JSON Examples:**
+
+*File with URI:*
+```json
+{
+  "fileWithUri": "https://example.com/uploads/document.pdf",
+  "mimeType": "application/pdf",
+  "name": "project-proposal.pdf"
+}
+```
+
+*File with bytes (base64 encoded):*
+```json
+{
+  "fileWithBytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "mimeType": "image/png",
+  "name": "sample-image.png"
+}
 ```
 
 #### 4.1.7. DataPart
@@ -601,12 +789,92 @@ Represents structured JSON data within a Part.
 --8<-- "specification/grpc/a2a.proto:DataPart"
 ```
 
+**JSON Example:**
+```json
+{
+  "data": {
+    "searchResults": [
+      {
+        "name": "Tony's Little Star Pizza",
+        "rating": 4.5,
+        "cuisine": "italian",
+        "price": 25,
+        "address": "1556 Stockton St, San Francisco, CA 94133",
+        "distance": 0.3
+      },
+      {
+        "name": "The Smith",
+        "rating": 4.2,
+        "cuisine": "american",
+        "price": 35,
+        "address": "956 2nd Ave, New York, NY 10022",
+        "distance": 0.1
+      }
+    ],
+    "totalResults": 127,
+    "searchCriteria": {
+      "location": "Times Square",
+      "radius": 1.0,
+      "minRating": 4.0
+    }
+  }
+}
+```
+
 #### 4.1.8. Artifact
 
 Represents a tangible output generated by the agent during a task.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:Artifact"
+```
+
+**JSON Example:**
+```json
+{
+  "artifactId": "artifact-restaurant-list-001",
+  "name": "Restaurant Recommendations",
+  "description": "List of highly rated restaurants near Times Square matching your preferences",
+  "parts": [
+    {
+      "text": "# Top Restaurant Recommendations\n\nBased on your criteria, here are the best restaurants near Times Square:\n\n## 1. Tony's Little Star Pizza\n**Rating:** 4.5/5 | **Cuisine:** Italian | **Price:** $25\n**Address:** 1556 Stockton St, San Francisco, CA 94133\n\nAuthentic Italian pizza with excellent reviews for quality ingredients and atmosphere.\n\n## 2. The Smith\n**Rating:** 4.2/5 | **Cuisine:** American | **Price:** $35\n**Address:** 956 2nd Ave, New York, NY 10022\n\nUpscale American bistro known for excellent service and diverse menu options."
+    },
+    {
+      "data": {
+        "restaurants": [
+          {
+            "id": "rest-001",
+            "name": "Tony's Little Star Pizza",
+            "rating": 4.5,
+            "cuisine": "italian",
+            "averagePrice": 25,
+            "coordinates": {
+              "lat": 40.7589,
+              "lng": -73.9851
+            }
+          },
+          {
+            "id": "rest-002",
+            "name": "The Smith",
+            "rating": 4.2,
+            "cuisine": "american",
+            "averagePrice": 35,
+            "coordinates": {
+              "lat": 40.7614,
+              "lng": -73.9776
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "searchRadius": 1.0,
+    "totalCandidates": 127,
+    "filteredBy": ["rating >= 4.0", "price <= $50"],
+    "generatedAt": "2025-10-28T10:30:00Z"
+  }
+}
 ```
 
 ### 4.2. Streaming Events
@@ -621,6 +889,32 @@ Carries information about a change in task status during streaming.
 --8<-- "specification/grpc/a2a.proto:TaskStatusUpdateEvent"
 ```
 
+**JSON Example:**
+```json
+{
+  "taskId": "task-12345",
+  "contextId": "context-67890",
+  "status": {
+    "state": "working",
+    "message": {
+      "messageId": "msg-status-update-001",
+      "role": "agent",
+      "parts": [
+        {
+          "text": "Searching for restaurants in your area..."
+        }
+      ]
+    },
+    "timestamp": "2025-10-28T10:29:55Z"
+  },
+  "final": false,
+  "metadata": {
+    "progress": 0.3,
+    "estimatedTimeRemaining": "15s"
+  }
+}
+```
+
 <span id="4193-taskartifactupdateevent"></span>
 <span id="723-taskartifactupdateevent-object"></span>
 #### 4.2.2. TaskArtifactUpdateEvent
@@ -629,6 +923,25 @@ Carries a new or updated artifact generated during streaming.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:TaskArtifactUpdateEvent"
+```
+
+**JSON Example:**
+```json
+{
+  "taskId": "task-12345",
+  "contextId": "context-67890",
+  "artifact": {
+    "artifactId": "artifact-streaming-001",
+    "name": "Search Results",
+    "parts": [
+      {
+        "text": "Found 3 restaurants matching your criteria:\n\n1. Tony's Little Star Pizza (4.5★)"
+      }
+    ]
+  },
+  "append": true,
+  "lastChunk": false
+}
 ```
 
 ### 4.3. Push Notification Objects
@@ -642,6 +955,19 @@ Configuration for setting up push notifications for task updates.
 --8<-- "specification/grpc/a2a.proto:PushNotificationConfig"
 ```
 
+**JSON Example:**
+```json
+{
+  "id": "push-config-001",
+  "url": "https://client-webhook.example.com/a2a/notifications",
+  "token": "webhook-token-abc123",
+  "authentication": {
+    "schemes": ["Bearer"],
+    "credentials": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
 #### 4.3.2. TaskPushNotificationConfig
 
 Resource wrapper for push notification configurations.
@@ -650,12 +976,36 @@ Resource wrapper for push notification configurations.
 --8<-- "specification/grpc/a2a.proto:TaskPushNotificationConfig"
 ```
 
+**JSON Example:**
+```json
+{
+  "name": "tasks/task-12345/pushNotificationConfigs/config-001",
+  "pushNotificationConfig": {
+    "id": "push-config-001",
+    "url": "https://client-webhook.example.com/a2a/notifications",
+    "token": "webhook-token-abc123",
+    "authentication": {
+      "schemes": ["Bearer"],
+      "credentials": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+  }
+}
+```
+
 #### 4.3.3. AuthenticationInfo
 
 Defines authentication details for push notifications.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:PushNotificationAuthenticationInfo"
+```
+
+**JSON Example:**
+```json
+{
+  "schemes": ["Bearer", "Basic"],
+  "credentials": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+}
 ```
 
 ### 4.4. Agent Discovery Objects
@@ -671,12 +1021,95 @@ The primary metadata document describing an agent's capabilities and interface.
 --8<-- "specification/grpc/a2a.proto:AgentCard"
 ```
 
+**JSON Example:**
+```json
+{
+  "protocolVersion": "0.3.0",
+  "name": "Restaurant Finder Agent",
+  "description": "AI agent specialized in finding and recommending restaurants based on user preferences, location, and dietary requirements",
+  "url": "https://restaurant-agent.example.com/a2a/v1",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {
+      "url": "https://restaurant-agent.example.com/a2a/grpc",
+      "transport": "GRPC"
+    },
+    {
+      "url": "https://restaurant-agent.example.com/a2a/rest",
+      "transport": "HTTP+JSON"
+    }
+  ],
+  "provider": {
+    "organization": "Foodie AI Inc.",
+    "url": "https://www.foodieai.com"
+  },
+  "version": "2.1.0",
+  "documentationUrl": "https://docs.foodieai.com/restaurant-agent",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "extensions": [
+      {
+        "uri": "https://example.com/extensions/geolocation/v1",
+        "description": "Location-based restaurant search",
+        "required": false
+      }
+    ],
+    "stateTransitionHistory": true
+  },
+  "securitySchemes": {
+    "api_key": {
+      "apiKeySecurityScheme": {
+        "description": "API key authentication",
+        "location": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "schemes": {
+        "api_key": {
+          "list": []
+        }
+      }
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["text/plain", "application/json", "text/html"],
+  "skills": [
+    {
+      "id": "restaurant-search",
+      "name": "Restaurant Search and Recommendations",
+      "description": "Find restaurants based on location, cuisine preferences, price range, and dietary restrictions",
+      "tags": ["restaurants", "food", "search", "recommendations"],
+      "examples": [
+        "Find Italian restaurants near Times Square under $50",
+        "Show me vegan-friendly places within 1 mile"
+      ],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": true,
+  "iconUrl": "https://restaurant-agent.example.com/icon.png"
+}
+```
+
 #### 4.4.2. AgentProvider
 
 Information about the organization providing the agent.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:AgentProvider"
+```
+
+**JSON Example:**
+```json
+{
+  "organization": "Foodie AI Inc.",
+  "url": "https://www.foodieai.com"
+}
 ```
 
 #### 4.4.3. AgentCapabilities
@@ -687,12 +1120,46 @@ Defines optional A2A protocol features supported by the agent.
 --8<-- "specification/grpc/a2a.proto:AgentCapabilities"
 ```
 
+**JSON Example:**
+```json
+{
+  "streaming": true,
+  "pushNotifications": true,
+  "extensions": [
+    {
+      "uri": "https://example.com/extensions/geolocation/v1",
+      "description": "Location-based search capabilities",
+      "required": false,
+      "params": {
+        "maxRadius": 10,
+        "units": "miles"
+      }
+    }
+  ],
+  "stateTransitionHistory": true
+}
+```
+
 #### 4.4.4. AgentExtension
 
 Specifies a protocol extension supported by the agent.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:AgentExtension"
+```
+
+**JSON Example:**
+```json
+{
+  "uri": "https://example.com/extensions/geolocation/v1",
+  "description": "Provides location-based search and filtering capabilities for enhanced geographic relevance",
+  "required": false,
+  "params": {
+    "supportedUnits": ["miles", "kilometers"],
+    "maxRadius": 50,
+    "precisionLevel": "high"
+  }
+}
 ```
 
 #### 4.4.5. AgentSkill
@@ -703,6 +1170,32 @@ Describes a specific capability or area of expertise the agent can perform.
 --8<-- "specification/grpc/a2a.proto:AgentSkill"
 ```
 
+**JSON Example:**
+```json
+{
+  "id": "restaurant-search",
+  "name": "Restaurant Search and Recommendations",
+  "description": "Comprehensive restaurant discovery service that finds dining establishments based on user preferences including cuisine type, price range, location, dietary restrictions, and ratings. Provides detailed information including menus, hours, and reservation options.",
+  "tags": ["restaurants", "food", "dining", "search", "recommendations", "local"],
+  "examples": [
+    "Find Italian restaurants near Times Square under $50 per person",
+    "Show me vegan-friendly places within 2 miles with 4+ star ratings",
+    "{\"cuisine\": \"mexican\", \"location\": \"downtown\", \"maxPrice\": 30, \"dietary\": [\"vegetarian\"]}"
+  ],
+  "inputModes": ["text/plain", "application/json"],
+  "outputModes": ["text/plain", "application/json", "text/html"],
+  "security": [
+    {
+      "schemes": {
+        "api_key": {
+          "list": []
+        }
+      }
+    }
+  ]
+}
+```
+
 #### 4.4.6. AgentInterface
 
 Declares additional protocols supported by the agent.
@@ -711,12 +1204,32 @@ Declares additional protocols supported by the agent.
 --8<-- "specification/grpc/a2a.proto:AgentInterface"
 ```
 
+**JSON Example:**
+```json
+{
+  "url": "https://restaurant-agent.example.com/a2a/grpc",
+  "transport": "GRPC"
+}
+```
+
 #### 4.4.7. AgentCardSignature
 
 Represents a JSON Web Signature for agent card verification.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:AgentCardSignature"
+```
+
+**JSON Example:**
+```json
+{
+  "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiJrZXktMSIsImprdSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vYWdlbnQvandrcy5qc29uIn0",
+  "signature": "QFdkNLNszlGj3z3u0YQGt_T9LixY3qtdQpZmsTdDHDe3fXV9y9-B3m2-XgCpzuhiLt8E0tV6HXoZKHv4GtHgKQ",
+  "header": {
+    "x5c": ["MIIBdjCCAR2gAwIBAgIJAK..."],
+    "custom": "additional-header-data"
+  }
+}
 ```
 
 ### 4.5. Security Objects
@@ -729,12 +1242,53 @@ Base security scheme definition supporting multiple authentication types.
 --8<-- "specification/grpc/a2a.proto:SecurityScheme"
 ```
 
+**JSON Examples:**
+
+*API Key Security Scheme:*
+```json
+{
+  "apiKeySecurityScheme": {
+    "description": "API key for server authentication",
+    "location": "header",
+    "name": "X-API-Key"
+  }
+}
+```
+
+*OAuth2 Security Scheme:*
+```json
+{
+  "oauth2SecurityScheme": {
+    "description": "OAuth 2.0 authorization",
+    "flows": {
+      "authorizationCode": {
+        "authorizationUrl": "https://auth.example.com/oauth/authorize",
+        "tokenUrl": "https://auth.example.com/oauth/token",
+        "scopes": {
+          "read": "Read access to agent capabilities",
+          "write": "Write access to submit tasks"
+        }
+      }
+    }
+  }
+}
+```
+
 #### 4.5.2. APIKeySecurityScheme
 
 API key-based authentication scheme.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:APIKeySecurityScheme"
+```
+
+**JSON Example:**
+```json
+{
+  "description": "API key authentication for secure access",
+  "location": "header",
+  "name": "X-API-Key"
+}
 ```
 
 #### 4.5.3. HTTPAuthSecurityScheme
@@ -745,12 +1299,51 @@ HTTP authentication scheme (Basic, Bearer, etc.).
 --8<-- "specification/grpc/a2a.proto:HTTPAuthSecurityScheme"
 ```
 
+**JSON Examples:**
+
+*Bearer Token:*
+```json
+{
+  "description": "Bearer token authentication",
+  "scheme": "Bearer",
+  "bearerFormat": "JWT"
+}
+```
+
+*Basic Authentication:*
+```json
+{
+  "description": "Basic HTTP authentication",
+  "scheme": "Basic"
+}
+```
+
 #### 4.5.4. OAuth2SecurityScheme
 
 OAuth 2.0 authentication scheme.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:OAuth2SecurityScheme"
+```
+
+**JSON Example:**
+```json
+{
+  "description": "OAuth 2.0 authentication with authorization code flow",
+  "flows": {
+    "authorizationCode": {
+      "authorizationUrl": "https://auth.example.com/oauth/authorize",
+      "tokenUrl": "https://auth.example.com/oauth/token",
+      "refreshUrl": "https://auth.example.com/oauth/refresh",
+      "scopes": {
+        "read": "Read access to agent capabilities",
+        "write": "Submit tasks and receive responses",
+        "admin": "Administrative access to agent configuration"
+      }
+    }
+  },
+  "oauth2MetadataUrl": "https://auth.example.com/.well-known/oauth-authorization-server"
+}
 ```
 
 #### 4.5.5. OpenIdConnectSecurityScheme
@@ -761,12 +1354,27 @@ OpenID Connect authentication scheme.
 --8<-- "specification/grpc/a2a.proto:OpenIdConnectSecurityScheme"
 ```
 
+**JSON Example:**
+```json
+{
+  "description": "OpenID Connect authentication",
+  "openIdConnectUrl": "https://accounts.google.com/.well-known/openid-configuration"
+}
+```
+
 #### 4.5.6. MutualTLSSecurityScheme
 
 Mutual TLS authentication scheme.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:MutualTLSSecurityScheme"
+```
+
+**JSON Example:**
+```json
+{
+  "description": "Mutual TLS authentication using client certificates"
+}
 ```
 
 ### 4.6. Extensions
