@@ -56,7 +56,13 @@ This document provides the detailed technical specification for the A2A protocol
 
 For a broader understanding of A2A's purpose and benefits, see [What is A2A?](./topics/what-is-a2a.md).
 
-## 2. Core Concepts Summary
+## 2. Terminology
+
+### 2.1. Requirements Language
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
+
+### 2.2. Core Concepts
 
 A2A revolves around several key concepts. For detailed explanations, please refer to the [Key Concepts guide](./topics/key-concepts.md).
 
@@ -86,7 +92,7 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 - [`Message`](#414-message): The message containing user input (required)
 - [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- `metadata`: Optional metadata for the request (optional)
+- [`metadata`](#333-metadata): Optional metadata for the request (optional)
 
 **Outputs:**
 
@@ -113,7 +119,7 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 - [`Message`](#414-message): The message containing user input (required)
 - [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- `metadata`: Optional metadata for the request (optional)
+- [`metadata`](#333-metadata): Optional metadata for the request (optional)
 
 **Outputs:**
 
@@ -165,7 +171,7 @@ Retrieves a list of tasks with optional filtering and pagination capabilities. T
 - `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#332-history-length-semantics) for details, defaults to 0)
 - `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
 - `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
-- `metadata` (optional): Request-specific metadata for extensions or custom parameters
+- [`metadata`](#333-metadata) (optional): Request-specific metadata for extensions or custom parameters
 
 When includeArtifacts is false (the default), the artifacts field MUST be omitted entirely from each Task object in the response. The field should not be present as an empty array or null value. When includeArtifacts is true, the artifacts field should be included with its actual content (which may be an empty array if the task has no artifacts).
 
@@ -229,7 +235,9 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Behavior:**
 
-The operation MUST enable real-time monitoring of task progress but can only be used with tasks created by `message/stream` operations, not `message/send`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
+The operation enables real-time monitoring of task progress but can only be used with tasks created by `message/stream` operations, not `message/send`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
+
+The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `tasks/get` and calling `tasks/resubscribe`.
 
 **Transport Implementations:**
 
@@ -237,32 +245,7 @@ The operation MUST enable real-time monitoring of task progress but can only be 
 - **gRPC**: [`TaskResubscription`](#1035-taskresubscription)
 - **HTTP/REST**: [`POST /v1/tasks/{id}:resubscribe`](#1122-task-operations)
 
-#### 3.1.7. Get Agent Card
-
-Retrieves a potentially more detailed version of the Agent Card after the client has authenticated. This endpoint is available only if `AgentCard.supportsAuthenticatedExtendedCard` is `true`.
-
-**Inputs:**
-
-- None (no parameters required)
-
-**Outputs:**
-
-- [`AgentCard`](#441-agentcard): A complete Agent Card object, which may contain additional details or skills not present in the public card
-
-**Behavior:**
-
-- **Authentication**: The client MUST authenticate the request using one of the schemes declared in the public `AgentCard.securitySchemes` and `AgentCard.security` fields.
-- **Extended Information**: The operation MAY return different details based on client authentication level, including additional skills, capabilities, or configuration not available in the public Agent Card.
-- **Card Replacement**: Clients retrieving this authenticated card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
-- **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
-
-**Transport Implementations:**
-
-- **JSON-RPC**: [`agent/getAuthenticatedExtendedCard`](#938-agentgetauthenticatedextendedcard)
-- **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
-- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
-
-#### 3.1.8. Set or Update Push Notification Config
+#### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
 
 Creates or updates a push notification configuration for a task to receive asynchronous updates.
@@ -287,7 +270,7 @@ The operation MUST establish a webhook endpoint for task completion notification
 - **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
-#### 3.1.9. Get Push Notification Config
+#### 3.1.8. Get Push Notification Config
 <span id="76-taskspushnotificationconfigget"></span>
 
 Retrieves an existing push notification configuration for a task.
@@ -311,7 +294,7 @@ The operation MUST return configuration details including webhook URL and notifi
 - **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
 
-#### 3.1.10. List Push Notification Configs
+#### 3.1.9. List Push Notification Configs
 
 Retrieves all push notification configurations for a task.
 
@@ -333,7 +316,7 @@ The operation MUST return all active push notification configurations for the sp
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
 
-#### 3.1.11. Delete Push Notification Config
+#### 3.1.10. Delete Push Notification Config
 
 Removes a push notification configuration for a task.
 
@@ -355,6 +338,31 @@ The operation MUST permanently remove the specified push notification configurat
 - **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#937-push-notification-configuration-methods)
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
+
+#### 3.1.11. Get Agent Card
+
+Retrieves a potentially more detailed version of the Agent Card after the client has authenticated. This endpoint is available only if `AgentCard.supportsAuthenticatedExtendedCard` is `true`.
+
+**Inputs:**
+
+- None (no parameters required)
+
+**Outputs:**
+
+- [`AgentCard`](#441-agentcard): A complete Agent Card object, which may contain additional details or skills not present in the public card
+
+**Behavior:**
+
+- **Authentication**: The client MUST authenticate the request using one of the schemes declared in the public `AgentCard.securitySchemes` and `AgentCard.security` fields.
+- **Extended Information**: The operation MAY return different details based on client authentication level, including additional skills, capabilities, or configuration not available in the public Agent Card.
+- **Card Replacement**: Clients retrieving this authenticated card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
+- **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
+
+**Transport Implementations:**
+
+- **JSON-RPC**: [`agent/getAuthenticatedExtendedCard`](#938-agentgetauthenticatedextendedcard)
+- **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
+- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
 
 ### 3.2. Operation Semantics
 
@@ -406,9 +414,13 @@ The `historyLength` parameter appears in multiple operations and controls how mu
 - Servers MUST NOT return more history items than requested when a positive limit is specified
 - When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
 
-### 3.3.3. Metadata
+#### 3.3.3. Metadata
 
 A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#extensions) can be used to strongly type metadata values for specific use cases.
+
+#### 3.3.4 Headers
+
+A key-value map for passing horizontally applicable context or parameters. These values will generally be mapped to protocol headers (e.g., HTTP headers) by the implementation. Where no such capability exists in the transport, headers can be passed as a metadata value using the reserved `headers` metadata key.
 
 ### 3.4. Multi-Turn Interactions
 
