@@ -444,6 +444,18 @@ All operations may return errors in the following categories:
 - **Resource Errors**: Requested task not found or not accessible
 - **System Errors**: Internal agent failures or temporary unavailability
 
+**A2A-Specific Errors:**
+
+| Error Name                          | Description                                                                                                                                                       |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TaskNotFoundError`                 | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged.                       |
+| `TaskNotCancelableError`            | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
+| `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`).      |
+| `UnsupportedOperationError`         | The requested operation or a specific aspect of it is not supported by this server agent implementation.                                                          |
+| `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
+| `InvalidAgentResponseError`         | An agent returned a response that does not conform to the specification for the current method.                                                                    |
+| `AuthenticatedExtendedCardNotConfiguredError` | The agent does not have an authenticated extended card configured when one is required for the requested operation.                                     |
+
 #### 3.2.3. Asynchronous Processing
 
 - [`Task`](#411-task) objects represent asynchronous work units
@@ -1381,17 +1393,61 @@ Retrieves an authenticated, potentially extended Agent Card.
 
 ### 9.4. Error Handling
 
-A2A defines a set of errors that are specific to the semantics of the A2A protocol.
+A2A uses standard JSON-RPC 2.0 error handling with additional A2A-specific error codes.
 
-**A2A-Specific Errors:**
+**Standard JSON-RPC Error Codes:**
 
-| Error Name                          | Description                                                                                                                                                       |
-| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TaskNotFoundError`                 | The specified task ID does not correspond to an existing or accessible task. It might be invalid, expired, or already completed and purged.                       |
-| `TaskNotCancelableError`            | An attempt was made to cancel a task that is not in a cancelable state (e.g., it has already reached a terminal state like `completed`, `failed`, or `canceled`). |
-| `PushNotificationNotSupportedError` | Client attempted to use push notification features but the server agent does not support them (i.e., `AgentCard.capabilities.pushNotifications` is `false`).      |
-| `UnsupportedOperationError`         | The requested operation or a specific aspect of it is not supported by this server agent implementation.                                                          |
-| `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
+| JSON-RPC Error Code | Error Name            | Standard Message                        | Description                                           |
+| :------------------ | :-------------------- | :-------------------------------------- | :---------------------------------------------------- |
+| `-32700`            | `JSONParseError`      | "Invalid JSON payload"                  | The server received invalid JSON                      |
+| `-32600`            | `InvalidRequestError` | "Request payload validation error"      | The JSON sent is not a valid Request object          |
+| `-32601`            | `MethodNotFoundError` | "Method not found"                      | The requested method does not exist or is not available |
+| `-32602`            | `InvalidParamsError`  | "Invalid parameters"                    | The method parameters are invalid                     |
+| `-32603`            | `InternalError`       | "Internal error"                        | An internal error occurred on the server             |
+
+**A2A-Specific Error Codes:**
+
+| A2A Error Type                      | JSON-RPC Error Code | Standard Message                                 | Description                                          |
+| :---------------------------------- | :------------------ | :----------------------------------------------- | :--------------------------------------------------- |
+| `TaskNotFoundError`                 | `-32001`            | "Task not found"                                 | The specified task ID does not exist or is not accessible |
+| `TaskNotCancelableError`            | `-32002`            | "Task cannot be canceled"                        | Task is not in a cancelable state                   |
+| `PushNotificationNotSupportedError` | `-32003`            | "Push Notification is not supported"             | Agent does not support push notifications           |
+| `UnsupportedOperationError`         | `-32004`            | "This operation is not supported"                | The requested operation is not supported             |
+| `ContentTypeNotSupportedError`      | `-32005`            | "Incompatible content types"                     | Content type is not supported by the agent          |
+| `InvalidAgentResponseError`         | `-32006`            | "Invalid agent response"                         | Agent response does not conform to specification     |
+| `AuthenticatedExtendedCardNotConfiguredError` | `-32007` | "Authenticated Extended Card is not configured" | Agent does not have authenticated extended card configured |
+
+**Example Standard JSON-RPC Error Response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32601,
+    "message": "Method not found",
+    "data": {
+      "method": "invalid/method"
+    }
+  }
+}
+```
+
+**Example A2A-Specific Error Response:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "error": {
+    "code": -32001,
+    "message": "Task not found",
+    "data": {
+      "taskId": "nonexistent-task-id"
+    }
+  }
+}
+```
 
 ## 10. gRPC Protocol Binding
 
@@ -1567,11 +1623,36 @@ A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for form
 | `PushNotificationNotSupportedError` | Push notifications not supported | `UNIMPLEMENTED`       |
 | `UnsupportedOperationError`         | Operation not supported          | `UNIMPLEMENTED`       |
 | `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
+| `InvalidAgentResponseError`         | Invalid agent response           | `INTERNAL`            |
+| `AuthenticatedExtendedCardNotConfiguredError` | Authenticated extended card not configured | `FAILED_PRECONDITION` |
 
-**Example Error Response:**
+**Example Standard gRPC Error Response:**
 
 ```proto
-// gRPC Status object
+// Standard gRPC invalid argument error
+status {
+  code: INVALID_ARGUMENT
+  message: "Invalid request parameters"
+  details: [
+    {
+      type_url: "type.googleapis.com/google.rpc.BadRequest"
+      value: {
+        field_violations: [
+          {
+            field: "message.parts"
+            description: "At least one part is required"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Example A2A-Specific Error Response:**
+
+```proto
+// A2A-specific task not found error
 status {
   code: NOT_FOUND
   message: "Task with ID 'task-123' not found"
@@ -1703,12 +1784,35 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 | `PushNotificationNotSupportedError` | `501 Not Implemented`        | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
 | `UnsupportedOperationError`         | `501 Not Implemented`        | `OPERATION_NOT_SUPPORTED`          | Operation not supported          |
 | `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `CONTENT_TYPE_NOT_SUPPORTED`       | Content type not supported       |
+| `InvalidAgentResponseError`         | `502 Bad Gateway`            | `INVALID_AGENT_RESPONSE`           | Invalid agent response           |
+| `AuthenticatedExtendedCardNotConfiguredError` | `501 Not Implemented` | `AUTHENTICATED_EXTENDED_CARD_NOT_CONFIGURED` | Authenticated extended card not configured |
 
 #### 11.5.2. Error Response Format
 
-A2A error responses **MUST** include a JSON error object with the following structure:
+**Standard HTTP Error Response:**
 
 ```json
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "Invalid request payload",
+    "details": {
+      "field": "message.parts",
+      "reason": "At least one part is required"
+    }
+  }
+}
+```
+
+**A2A-Specific Error Response:**
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
 {
   "error": {
     "code": "TASK_NOT_FOUND",
