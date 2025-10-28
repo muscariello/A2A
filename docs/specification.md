@@ -141,7 +141,7 @@ Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, 
 
 #### 3.1.3. Get Task
 
-Retrieves the current state (including status, artifacts, and optionally history) of a previously initiated task. This is typically used for polling the status of a task initiated with message/send, or for fetching the final state of a task after being notified via a push notification or after an SSE stream has ended.
+Retrieves the current state (including status, artifacts, and optionally history) of a previously initiated task. This is typically used for polling the status of a task initiated with message/send, or for fetching the final state of a task after being notified via a push notification or after a stream has ended.
 
 **Inputs:**
 
