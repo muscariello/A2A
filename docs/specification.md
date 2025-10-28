@@ -56,6 +56,68 @@ This document provides the detailed technical specification for the A2A protocol
 
 For a broader understanding of A2A's purpose and benefits, see [What is A2A?](./topics/what-is-a2a.md).
 
+### 1.3. Specification Structure
+
+This specification is organized into three distinct layers that work together to provide a complete protocol definition:
+
+```mermaid
+graph TB
+    subgraph L1 ["A2A Data Model"]
+        direction LR
+        A[Task] ~~~ B[Message] ~~~ C[AgentCard] ~~~ D[Part] ~~~ E[Artifact] ~~~ F[Extension]
+    end
+
+    subgraph L2 ["A2A Operations"]
+        direction LR
+        G[Send Message] ~~~ H[Stream Message] ~~~ I[Get Task] ~~~ J[List Tasks] ~~~ K[Cancel Task] ~~~ L[Get Agent Card]
+    end
+
+    subgraph L3 ["Protocol Bindings"]
+        direction LR
+        M[JSON-RPC Methods] ~~~ N[gRPC RPCs] ~~~ O[HTTP/REST Endpoints] ~~~ P[Custom Bindings]
+    end
+
+    %% Dependencies between layers
+    L1 --> L2
+    L2 --> L3
+
+
+    style A fill:#e1f5fe
+    style B fill:#e1f5fe
+    style C fill:#e1f5fe
+    style D fill:#e1f5fe
+    style E fill:#e1f5fe
+    style F fill:#e1f5fe
+
+    style G fill:#f3e5f5
+    style H fill:#f3e5f5
+    style I fill:#f3e5f5
+    style J fill:#f3e5f5
+    style K fill:#f3e5f5
+    style L fill:#f3e5f5
+
+    style M fill:#e8f5e8
+    style N fill:#e8f5e8
+    style O fill:#e8f5e8
+
+    style L1 fill:#f0f8ff,stroke:#333,stroke-width:2px
+    style L2 fill:#faf0ff,stroke:#333,stroke-width:2px
+    style L3 fill:#f0fff0,stroke:#333,stroke-width:2px
+```
+
+**Layer 1: Canonical Data Model** defines the core data structures and message formats that all A2A implementations must understand. These are protocol agnostic definitions expressed as Protocol Buffer messages.
+
+**Layer 2: Abstract Operations** describes the fundamental capabilities and behaviors that A2A agents must support, independent of how they are exposed over specific protocols.
+
+**Layer 3: Protocol Bindings** provides concrete mappings of the abstract operations and data structures to specific protocol bindings (JSON-RPC, gRPC, HTTP/REST), including method names, endpoint patterns, and protocol-specific behaviors.
+
+This layered approach ensures that:
+
+- Core semantics remain consistent across all protocol bindings
+- New protocol bindings can be added without changing the fundamental data model
+- Developers can reason about A2A operations independently of binding concerns
+- Interoperability is maintained through shared understanding of the canonical data model
+
 ## 2. Terminology
 
 ### 2.1. Requirements Language
@@ -80,7 +142,7 @@ A2A revolves around several key concepts. For detailed explanations, please refe
 
 ## 3. A2A Protocol Operations
 
-This section describes the core operations of the A2A protocol in a transport-independent manner. These operations define the fundamental capabilities that all A2A implementations must support, regardless of the underlying transport mechanism.
+This section describes the core operations of the A2A protocol in a binding-independent manner. These operations define the fundamental capabilities that all A2A implementations must support, regardless of the underlying binding mechanism.
 
 ### 3.1. Core Operations
 
@@ -105,7 +167,7 @@ The agent MAY create a new task to process the provided message asynchronously o
 
 Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`message/send`](#931-messagesend)
 - **gRPC**: [`SendMessage`](#1031-sendmessage)
@@ -133,7 +195,7 @@ The operation MUST establish a streaming connection for real-time updates. The a
 
 Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`message/stream`](#932-messagestream)
 - **gRPC**: [`SendStreamingMessage`](#1032-sendstreamingmessage)
@@ -152,7 +214,7 @@ Retrieves the current state (including status, artifacts, and optionally history
 
 - [`Task`](#411-task): Current state and artifacts of the requested task
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/get`](#933-tasksget)
 - **gRPC**: [`GetTask`](#1033-gettask)
@@ -194,7 +256,7 @@ Ordering: Implementations MUST return tasks sorted by their last update time in 
 
 Security Note: Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/list`](#934-taskslist)
 - **gRPC**: [`ListTasks`](#1034-listtasks)
@@ -213,7 +275,7 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 - Updated [`Task`](#411-task) with cancellation status
 
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/cancel`](#935-taskscancel)
 - **gRPC**: [`CancelTask`](#103-core-methods)
@@ -239,7 +301,7 @@ The operation enables real-time monitoring of task progress but can only be used
 
 The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `tasks/get` and calling `tasks/resubscribe`.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/resubscribe`](#936-tasksresubscribe)
 - **gRPC**: [`TaskResubscription`](#1035-taskresubscription)
@@ -263,7 +325,7 @@ Creates or updates a push notification configuration for a task to receive async
 
 The operation MUST establish a webhook endpoint for task completion notifications and is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
 - **gRPC**: [`SetTaskPushNotificationConfig`](#grpc-push-notification-operations)
@@ -288,7 +350,7 @@ Retrieves an existing push notification configuration for a task.
 
 The operation MUST return configuration details including webhook URL and notification settings. The operation MUST fail if the configuration does not exist or the client lacks access.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#937-push-notification-configuration-methods)
 - **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
@@ -310,7 +372,7 @@ Retrieves all push notification configurations for a task.
 
 The operation MUST return all active push notification configurations for the specified task and MAY support pagination for tasks with many configurations.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#937-push-notification-configuration-methods)
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
@@ -333,7 +395,7 @@ Removes a push notification configuration for a task.
 
 The operation MUST permanently remove the specified push notification configuration. No further notifications will be sent to the configured webhook after deletion. This operation MUST be idempotent - multiple deletions of the same config have the same effect.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#937-push-notification-configuration-methods)
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
@@ -358,7 +420,7 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 - **Card Replacement**: Clients retrieving this authenticated card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
 - **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
 
-**Transport Implementations:**
+**Protocol Bindings:**
 
 - **JSON-RPC**: [`agent/getAuthenticatedExtendedCard`](#938-agentgetauthenticatedextendedcard)
 - **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
@@ -420,7 +482,7 @@ A flexible key-value map for passing additional context or parameters with opera
 
 #### 3.3.4 Headers
 
-A key-value map for passing horizontally applicable context or parameters. These values will generally be mapped to protocol headers (e.g., HTTP headers) by the implementation. Where no such capability exists in the transport, headers can be passed as a metadata value using the reserved `headers` metadata key.
+A key-value map for passing horizontally applicable context or parameters. These values will generally be mapped to protocol headers (e.g., HTTP headers) by the implementation. Where no such capability exists in the protocol, headers can be passed as a metadata value using the reserved `headers` metadata key.
 
 ### 3.4. Multi-Turn Interactions
 
@@ -440,11 +502,11 @@ Real-time capabilities are provided through:
 - **Connection Management**: Proper handling of connection interruption and reconnection
 - **Buffering**: Events may be buffered during connection outages
 
-This specification defines three standard transport protocols: [JSON-RPC Transport](#9-json-rpc-transport), [gRPC Transport](#10-grpc-transport), and [HTTP+JSON/REST Transport](#11-httpjsonrest-transport). Alternative transport protocols **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Transport Compliance and Interoperability)](#5-transport-compliance-and-interoperability).
+This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-binding), [gRPC Protocol Binding](#10-grpc-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Compliance and Interoperability)](#5-binding-compliance-and-interoperability).
 
 ## 4. Protocol Data Model
 
-The A2A protocol defines a canonical data model using Protocol Buffers. All transport implementations **MUST** provide functionally equivalent representations of these data structures.
+The A2A protocol defines a canonical data model using Protocol Buffers. All protocol bindings **MUST** provide functionally equivalent representations of these data structures.
 
 "Normative Source" Principle:
 
@@ -464,7 +526,7 @@ The documentation build generates `specification/json/a2a.json` on-the-fly (the 
 
 Rationale:
 
-Centering the proto file as the normative source ensures transport neutrality, reduces specification drift, and provides a deterministic evolution path for the ecosystem.
+Centering the proto file as the normative source ensures protocol neutrality, reduces specification drift, and provides a deterministic evolution path for the ecosystem.
 
 ### 4.1. Core Objects
 
@@ -631,7 +693,7 @@ Describes a specific capability or area of expertise the agent can perform.
 
 #### 4.4.6. AgentInterface
 
-Declares additional transport interfaces supported by the agent.
+Declares additional protocols supported by the agent.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:AgentInterface"
@@ -734,7 +796,7 @@ Agents declare their supported extensions in the [`AgentCard`](#441-agentcard) u
 }
 ```
 
-Clients indicate their desire to opt into the use of specific extensions through transport-specific mechanisms such as HTTP headers, gRPC metadata, or JSON-RPC request parameters that identify the extension identifiers they wish to utilize during the interaction.
+Clients indicate their desire to opt into the use of specific extensions through binding-specific mechanisms such as HTTP headers, gRPC metadata, or JSON-RPC request parameters that identify the extension identifiers they wish to utilize during the interaction.
 
 *Example: HTTP client opting into extensions using headers:*
 ```http
@@ -823,23 +885,23 @@ Extensions **SHOULD** include version information in their URI identifier. This 
 
 If a client requests a versions of an extension that the agent does not support, the agent **SHOULD** ignore the extension for that interaction and proceed without it, unless the extension is marked as `required` in the AgentCard, in which case the agent **MUST** return an error indicating unsupported extension. It **MUST NOT** fall back to a previous version of the extension automatically.
 
-## 5. Transport Compliance and Interoperability
+## 5. Protocol Binding Compliance and Interoperability
 
 ### 5.1. Functional Equivalence Requirements
 
-When an agent supports multiple transports, all supported transports **MUST**:
+When an agent supports multiple protocols, all supported protocols **MUST**:
 
 - **Identical Functionality**: Provide the same set of operations and capabilities
 - **Consistent Behavior**: Return semantically equivalent results for the same requests
-- **Same Error Handling**: Map errors consistently using appropriate transport-specific codes
+- **Same Error Handling**: Map errors consistently using appropriate protocol-specific codes
 - **Equivalent Authentication**: Support the same authentication schemes declared in the AgentCard
 
-### 5.2. Transport Selection and Negotiation
+### 5.2. Protocol Selection and Negotiation
 
-- **Agent Declaration**: Agents **MUST** declare all supported transports in their AgentCard
-- **Client Choice**: Clients **MAY** choose any transport declared by the agent
-- **No Dynamic Negotiation**: A2A does not define runtime transport negotiation
-- **Fallback Behavior**: Clients **SHOULD** implement fallback logic for alternative transports
+- **Agent Declaration**: Agents **MUST** declare all supported protocols in their AgentCard
+- **Client Choice**: Clients **MAY** choose any protocol declared by the agent
+- **No Dynamic Negotiation**: A2A does not define runtime protocol negotiation
+- **Fallback Behavior**: Clients **SHOULD** implement fallback logic for alternative protocols
 
 ### 5.3. Method Mapping Reference
 
@@ -855,7 +917,7 @@ When an agent supports multiple transports, all supported transports **MUST**:
 
 ## 6. Common Workflows & Examples
 
-This section provides illustrative examples of common A2A interactions across different transports.
+This section provides illustrative examples of common A2A interactions across different bindings.
 
 ### 6.1. Basic Task Execution
 
@@ -990,13 +1052,13 @@ Authorization: Bearer token
 
 ## 7. Authentication and Authorization
 
-A2A treats agents as standard enterprise applications, relying on established web security practices. Identity information is handled at the transport layer, not within A2A protocol payloads.
+A2A treats agents as standard enterprise applications, relying on established web security practices. Identity information is handled at the protocol layer, not within A2A semantics.
 
 For a comprehensive guide on enterprise security aspects, see [Enterprise-Ready Features](./topics/enterprise-ready.md).
 
-### 7.1. Transport Security
+### 7.1. Protocol Security
 
-Production deployments **MUST** use encrypted transport (HTTPS for HTTP-based transports, TLS for gRPC). Implementations **SHOULD** use modern TLS configurations (TLS 1.3+ recommended) with strong cipher suites.
+Production deployments **MUST** use encrypted communication (HTTPS for HTTP-based bindings, TLS for gRPC). Implementations **SHOULD** use modern TLS configurations (TLS 1.3+ recommended) with strong cipher suites.
 
 ### 7.2. Server Identity Verification
 
@@ -1006,14 +1068,14 @@ A2A Clients **SHOULD** verify the A2A Server's identity by validating its TLS ce
 
 1. **Discovery of Requirements:** The client discovers the server's required authentication schemes via the `security_schemes` field in the AgentCard.
 2. **Credential Acquisition (Out-of-Band):** The client obtains the necessary credentials through an out-of-band process specific to the required authentication scheme.
-3. **Credential Transmission:** The client includes these credentials in transport-appropriate headers or metadata for every A2A request.
+3. **Credential Transmission:** The client includes these credentials in protocol-appropriate headers or metadata for every A2A request.
 
 ### 7.4. Server Authentication Responsibilities
 
 The A2A Server:
 
 - **MUST** authenticate every incoming request based on the provided credentials and its declared authentication requirements.
-- **SHOULD** use appropriate transport-specific error codes for authentication challenges or rejections.
+- **SHOULD** use appropriate binding-specific error codes for authentication challenges or rejections.
 - **SHOULD** provide relevant authentication challenge information with error responses.
 
 ### 7.5. In-Task Authentication (Secondary Credentials)
@@ -1049,30 +1111,30 @@ Clients can find Agent Cards through:
 - **Registries/Catalogs:** Querying curated catalogs of agents
 - **Direct Configuration:** Pre-configured Agent Card URLs or content
 
-### 8.3. Transport Declaration Requirements
+### 8.3. Protocol Declaration Requirements
 
-The AgentCard **MUST** properly declare supported transports:
+The AgentCard **MUST** properly declare supported protocols:
 
 #### 8.3.1. Primary Interface Declaration
 
 - The `url` field **MUST** specify the primary endpoint
-- The `preferred_transport` field **MUST** match the transport available at the primary URL
-- The primary URL **MUST** support the declared preferred transport
+- The `preferred_transport` field **MUST** match the binding available at the primary URL
+- The primary URL **MUST** support the declared preferred binding
 
 #### 8.3.2. Additional Interfaces
 
-- `additional_interfaces` **SHOULD** declare all supported transport combinations
-- Each interface **MUST** accurately declare its transport protocol
-- URLs **MAY** be reused if multiple transports are available at the same endpoint
+- `additional_interfaces` **SHOULD** declare all supported protocol combinations
+- Each interface **MUST** accurately declare its protocol binding
+- URLs **MAY** be reused if multiple protocols are available at the same endpoint
 
-#### 8.3.3. Client Transport Selection
+#### 8.3.3. Client Protocol Selection
 
 Clients **MUST** follow these rules:
 
-1. Parse available transports from the AgentCard
+1. Parse available protocols from the AgentCard
 2. Prefer the `preferred_transport` if supported
-3. Fall back to any supported transport from `additional_interfaces`
-4. Use the correct URL for the selected transport
+3. Fall back to any supported protocol from `additional_interfaces`
+4. Use the correct URL for the selected protocol
 
 ### 8.4. Sample Agent Card
 
@@ -1154,11 +1216,11 @@ Clients **MUST** follow these rules:
 }
 ```
 
-## 9. JSON-RPC Transport
+## 9. JSON-RPC Protocol Binding
 
-The JSON-RPC transport provides a simple, HTTP-based interface using JSON-RPC 2.0 for method calls and Server-Sent Events for streaming.
+The JSON-RPC protocol binding provides a simple, HTTP-based interface using JSON-RPC 2.0 for method calls and Server-Sent Events for streaming.
 
-### 9.1. Transport Requirements
+### 9.1. Protocol Requirements
 
 - **Protocol:** JSON-RPC 2.0 over HTTP(S)
 - **Content-Type:** `application/json` for requests and responses
@@ -1331,11 +1393,11 @@ A2A defines a set of errors that are specific to the semantics of the A2A protoc
 | `UnsupportedOperationError`         | The requested operation or a specific aspect of it is not supported by this server agent implementation.                                                          |
 | `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
 
-## 10. gRPC Transport
+## 10. gRPC Protocol Binding
 
-The gRPC transport provides a high-performance, strongly-typed interface using Protocol Buffers over HTTP/2. The gRPC transport leverages the [API guidelines](https://google.aip.dev/general) to simplify gRPC to HTTP mapping.
+The gRPC Protocol Binding provides a high-performance, strongly-typed interface using Protocol Buffers over HTTP/2. The gRPC Protocol Binding leverages the [API guidelines](https://google.aip.dev/general) to simplify gRPC to HTTP mapping.
 
-### 10.1. Transport Requirements
+### 10.1. Protocol Requirements
 
 - **Protocol:** gRPC over HTTP/2 with TLS
 - **Definition:** Use the normative Protocol Buffers definition in `specification/grpc/a2a.proto`
@@ -1531,7 +1593,7 @@ status {
 - **SHOULD** include structured error information in error responses
 - **MUST** include human-readable error messages
 - **MAY** include additional context for development environments
-- **MUST** maintain semantic equivalence with A2A error conditions across transports
+- **MUST** maintain semantic equivalence with A2A error conditions
 
 ### 10.5. Streaming
 
@@ -1542,11 +1604,11 @@ gRPC streaming uses server streaming RPCs for real-time updates. The `StreamResp
 --8<-- "specification/grpc/a2a.proto:StreamResponse"
 ```
 
-## 11. HTTP+JSON/REST Transport
+## 11. HTTP+JSON/REST Protocol Binding
 
-The HTTP+JSON transport provides a RESTful interface using standard HTTP methods and JSON payloads.
+The HTTP+JSON protocol binding provides a RESTful interface using standard HTTP methods and JSON payloads.
 
-### 11.1. Transport Requirements
+### 11.1. Protocol Requirements
 
 - **Protocol:** HTTP(S) with JSON payloads
 - **Content-Type:** `application/json` for requests and responses
@@ -1708,7 +1770,7 @@ This appendix catalogs renamed protocol messages and objects, their legacy ident
 | ----------------------------------------------- | ----------------------------------------- | ------------------------ | ------------------------------------------------------ |
 | `MessageSendParams`                             | `SendMessageRequest`                      | >= 0.5.0                 | Request payload rename for clarity (request vs params) |
 | `SendMessageSuccessResponse`                    | `SendMessageResponse`                     | >= 0.5.0                 | Unified success response naming                        |
-| `SendStreamingMessageSuccessResponse`           | `StreamResponse`                          | >= 0.5.0                 | Shorter, transport-agnostic streaming response         |
+| `SendStreamingMessageSuccessResponse`           | `StreamResponse`                          | >= 0.5.0                 | Shorter, binding-agnostic streaming response         |
 | `SetTaskPushNotificationConfigRequest`          | `CreateTaskPushNotificationConfigRequest` | >= 0.5.0                 | Explicit creation intent                               |
 | `ListTaskPushNotificationConfigSuccessResponse` | `ListTaskPushNotificationConfigResponse`  | >= 0.5.0                 | Consistent response suffix removal                     |
 | `GetAuthenticatedExtendedCardRequest`           | `GetAgentCardRequest`                     | >= 0.5.0                 | Simplified, generalized naming                         |
