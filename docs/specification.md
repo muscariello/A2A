@@ -152,9 +152,7 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 **Inputs:**
 
-- [`Message`](#414-message): The message containing user input (required)
-- [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- [`metadata`](#334-metadata): Optional metadata for the request (optional)
+- [`SendMessageRequest`](#321-sendmessagerequest): Request object containing the message, configuration, and metadata
 
 **Outputs:**
 
@@ -163,8 +161,8 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 **Errors:**
 
-- [`ContentTypeNotSupportedError`](#322-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
-- Error response: Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
+- [`ContentTypeNotSupportedError`](#332-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
+- [`UnsupportedOperationError`](#332-error-handling): Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
 
 **Behavior:**
 
@@ -182,9 +180,7 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 **Inputs:**
 
-- [`Message`](#414-message): The message containing user input (required)
-- [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- [`metadata`](#334-metadata): Optional metadata for the request (optional)
+- [`SendMessageRequest`](#321-sendmessagerequest): Request object containing the message, configuration, and metadata
 
 **Outputs:**
 
@@ -194,9 +190,9 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 **Errors:**
 
-- [`UnsupportedOperationError`](#322-error-handling): Streaming is not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`UnsupportedOperationError`](#322-error-handling): Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
-- [`ContentTypeNotSupportedError`](#322-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
+- [`UnsupportedOperationError`](#332-error-handling): Streaming is not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`UnsupportedOperationError`](#332-error-handling): Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
+- [`ContentTypeNotSupportedError`](#332-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
 
 **Behavior:**
 
@@ -215,7 +211,7 @@ Retrieves the current state (including status, artifacts, and optionally history
 **Inputs:**
 
 - `taskId`: Unique identifier of the task to retrieve
-- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#333-history-length-semantics) for details)
+- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#323-history-length-semantics) for details)
 
 **Outputs:**
 
@@ -241,10 +237,10 @@ Retrieves a list of tasks with optional filtering and pagination capabilities. T
 - `status` (optional): Filter tasks by their current status state
 - `pageSize` (optional): Maximum number of tasks to return (must be between 1 and 100, defaults to 50)
 - `pageToken` (optional): Token for pagination from a previous response
-- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#333-history-length-semantics) for details, defaults to 0)
+- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#323-history-length-semantics) for details, defaults to 0)
 - `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
 - `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
-- [`metadata`](#334-metadata) (optional): Request-specific metadata for extensions or custom parameters
+- [`metadata`](#324-metadata) (optional): Request-specific metadata for extensions or custom parameters
 
 When includeArtifacts is false (the default), the artifacts field MUST be omitted entirely from each Task object in the response. The field should not be present as an empty array or null value. When includeArtifacts is true, the artifacts field should be included with its actual content (which may be an empty array if the task has no artifacts).
 
@@ -291,8 +287,8 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 
 **Errors:**
 
-- [`TaskNotCancelableError`](#322-error-handling): The task is not in a cancelable state (e.g., already completed, failed, or canceled).
-- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+- [`TaskNotCancelableError`](#332-error-handling): The task is not in a cancelable state (e.g., already completed, failed, or canceled).
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
 
 **Behavior:**
 
@@ -316,15 +312,15 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Outputs:**
 
-- [Stream Response](#332-stream-response) object containing:
+- [Stream Response](#322-stream-response) object containing:
 - Initial response: [`Task`](#411-task) object with current state
 - Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 
 **Errors:**
 
-- [`UnsupportedOperationError`](#322-error-handling): Streaming is not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
-- [`UnsupportedOperationError`](#322-error-handling): The operation is attempted on a task that was not created by a streaming operation.
+- [`UnsupportedOperationError`](#332-error-handling): Streaming is not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
+- [`UnsupportedOperationError`](#332-error-handling): The operation is attempted on a task that was not created by a streaming operation.
 
 **Behavior:**
 
@@ -354,12 +350,12 @@ Creates or updates a push notification configuration for a task to receive async
 
 **Errors:**
 
-- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+- [`PushNotificationNotSupportedError`](#332-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
 
 **Behavior:**
 
-The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#332-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
+The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#322-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
 **Protocol Bindings:**
 
@@ -384,8 +380,8 @@ Retrieves an existing push notification configuration for a task.
 
 **Errors:**
 
-- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`TaskNotFoundError`](#322-error-handling): The push notification configuration does not exist.
+- [`PushNotificationNotSupportedError`](#332-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`TaskNotFoundError`](#332-error-handling): The push notification configuration does not exist.
 
 **Behavior:**
 
@@ -411,8 +407,8 @@ Retrieves all push notification configurations for a task.
 
 **Errors:**
 
-- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+- [`PushNotificationNotSupportedError`](#332-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
 
 **Behavior:**
 
@@ -439,8 +435,8 @@ Removes a push notification configuration for a task.
 
 **Errors:**
 
-- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
-- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist.
+- [`PushNotificationNotSupportedError`](#332-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#334-capability-validation)).
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist.
 
 **Behavior:**
 
@@ -466,8 +462,8 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 
 **Errors:**
 
-- [`UnsupportedOperationError`](#322-error-handling): The agent does not support authenticated extended cards (see [Capability Validation](#324-capability-validation)).
-- [`ExtendedAgentCardNotConfiguredError`](#322-error-handling): The agent declares support but does not have an extended agent card configured.
+- [`UnsupportedOperationError`](#332-error-handling): The agent does not support authenticated extended cards (see [Capability Validation](#334-capability-validation)).
+- [`ExtendedAgentCardNotConfiguredError`](#332-error-handling): The agent declares support but does not have an extended agent card configured.
 
 **Behavior:**
 
@@ -482,15 +478,66 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 - **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
 - **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
 
-### 3.2. Operation Semantics
+### 3.2. Operation Parameter Objects
 
-#### 3.2.1. Idempotency
+This section defines common parameter objects used across multiple operations.
+
+#### 3.3.1. SendMessageRequest
+
+Request object for sending messages to an agent.
+
+```proto
+--8<-- "specification/grpc/a2a.proto:SendMessageRequest"
+```
+
+#### 3.2.2. Stream Response
+
+A wrapper object used in streaming operations to encapsulate different types of response data.
+
+The Stream Response contains exactly one of the following properties:
+
+- **task**: A [`Task`](#411-task) object containing the current state of the task
+- **message**: A [`Message`](#414-message) object containing a message in the conversation
+- **taskStatusUpdateEvent**: A [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) object indicating a change in task status
+- **taskArtifactUpdateEvent**: A [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) object indicating updates to task artifacts
+
+This wrapper allows streaming endpoints to return different types of updates through a single response stream while maintaining type safety.
+
+```proto
+--8<-- "specification/grpc/a2a.proto:StreamResponse"
+```
+
+#### 3.2.3. History Length Semantics
+
+The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
+
+- **Unset/undefined**: No limit imposed; server returns its default amount of history (implementation-defined, may be all history)
+- **0**: No history should be returned; the `history` field SHOULD be omitted or empty
+- **> 0**: Return at most this many recent messages from the task's history
+
+**Server Requirements:**
+- Servers MAY return fewer history items than requested (e.g., if fewer items exist or for performance reasons)
+- Servers MUST NOT return more history items than requested when a positive limit is specified
+- When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
+
+#### 3.2.4. Metadata
+
+A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#46-extensions) can be used to strongly type metadata values for specific use cases.
+
+#### 3.2.5 Headers
+
+A key-value map for passing horizontally applicable context or parameters with string keys and string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
+
+
+### 3.3. Operation Semantics
+
+#### 3.3.1. Idempotency
 
 - **Get operations** (Get Task, List Tasks, Get Extended Agent Card) are naturally idempotent
 - **Send Message** operations MAY be idempotent. Agents may utilize the messageId to detect duplicate messages.
 - **Cancel Task** operations are idempotent - multiple cancellation requests have the same effect. A duplicate cancellation request MAY return `TaskNotFoundError` if a the task has already been canceled and purged.
 
-#### 3.2.2. Error Handling
+#### 3.3.2. Error Handling
 
 All operations may return errors in the following categories:
 
@@ -525,78 +572,27 @@ Protocol bindings **MUST** map these elements to their native error representati
 | `InvalidAgentResponseError`         | An agent returned a response that does not conform to the specification for the current method.                                                                    |
 | `ExtendedAgentCardNotConfiguredError` | The agent does not have an extended agent card configured when one is required for the requested operation.                                     |
 
-#### 3.2.3. Asynchronous Processing
+#### 3.3.3. Asynchronous Processing
 
 - [`Task`](#411-task) objects represent asynchronous work units
 - Operations return immediately with task information
 - Clients must poll or stream to get completion status
 - Agents may continue processing after initial response
 
-#### 3.2.4. Capability Validation
+#### 3.3.4. Capability Validation
 
 Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). When clients attempt to use operations or features that require capabilities not declared as supported in the Agent Card, the agent **MUST** return an appropriate error response:
 
-- **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#322-error-handling).
-- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `message/stream` or `tasks/resubscribe` operations **MUST** return [`UnsupportedOperationError`](#322-error-handling).
-- **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#322-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#322-error-handling).
-- **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`UnsupportedOperationError`](#322-error-handling).
+- **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#332-error-handling).
+- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `message/stream` or `tasks/resubscribe` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
+- **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#332-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#332-error-handling).
+- **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`UnsupportedOperationError`](#332-error-handling).
 
 Clients **SHOULD** validate capability support by examining the Agent Card before attempting operations that require optional capabilities.
 
-#### 3.2.5 Security Trimming
+#### 3.3.5 Security Trimming
 
 Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
-
-### 3.3. Operation Parameter Objects
-
-This section defines common parameter objects used across multiple operations.
-
-#### 3.3.1. MessageSendConfiguration
-
-Configuration for send message requests.
-
-```proto
---8<-- "specification/grpc/a2a.proto:MessageSendConfiguration"
-```
-
-#### 3.3.2. Stream Response
-
-A wrapper object used in streaming operations to encapsulate different types of response data.
-
-The Stream Response contains exactly one of the following properties:
-
-- **task**: A [`Task`](#411-task) object containing the current state of the task
-- **message**: A [`Message`](#414-message) object containing a message in the conversation
-- **taskStatusUpdateEvent**: A [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) object indicating a change in task status
-- **taskArtifactUpdateEvent**: A [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) object indicating updates to task artifacts
-
-This wrapper allows streaming endpoints to return different types of updates through a single response stream while maintaining type safety.
-
-```proto
---8<-- "specification/grpc/a2a.proto:StreamResponse"
-```
-
-#### 3.3.3. History Length Semantics
-
-The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
-
-- **Unset/undefined**: No limit imposed; server returns its default amount of history (implementation-defined, may be all history)
-- **0**: No history should be returned; the `history` field SHOULD be omitted or empty
-- **> 0**: Return at most this many recent messages from the task's history
-
-**Server Requirements:**
-- Servers MAY return fewer history items than requested (e.g., if fewer items exist or for performance reasons)
-- Servers MUST NOT return more history items than requested when a positive limit is specified
-- When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
-
-#### 3.3.4. Metadata
-
-A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#46-extensions) can be used to strongly type metadata values for specific use cases.
-
-#### 3.3.5 Headers
-
-A key-value map for passing horizontally applicable context or parameters with string keys and string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
-
 
 ### 3.4. Multi-Turn Interactions
 
@@ -1113,7 +1109,7 @@ Defines authentication details for push notifications.
 #### 4.3.4. Push Notification Payload
 <span id="434-push-notification-payload"></span>
 
-When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#332-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
+When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#322-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
 
 **Request Format:**
 
@@ -1133,7 +1129,7 @@ Content-Type: application/json
 
 **Payload Structure:**
 
-The webhook payload is a [`StreamResponse`](#332-stream-response) object containing exactly one of the following:
+The webhook payload is a [`StreamResponse`](#322-stream-response) object containing exactly one of the following:
 
 - **task**: A [`Task`](#411-task) object with the current task state
 - **message**: A [`Message`](#414-message) object containing a message response
@@ -2126,15 +2122,11 @@ Sends a message to initiate or continue a task.
   "jsonrpc": "2.0",
   "id": 1,
   "method": "message/send",
-  "params": {
-    "message": { /* Message object */ },
-    "configuration": { /* MessageSendConfiguration object */ },
-    "metadata": { /* optional metadata */ }
-  }
+  "params": { /* SendMessageRequest object */ }
 }
 ```
 
-**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#331-messagesendconfiguration)
+**Referenced Objects:** [`SendMessageRequest`](#321-sendmessagerequest), [`Message`](#414-message)
 
 **Response:**
 ```json
@@ -2255,7 +2247,7 @@ Retrieves an extended Agent Card.
 
 ### 9.4. Error Handling
 
-A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specification#error_object) with additional A2A-specific error codes. The JSON-RPC error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specification#error_object) with additional A2A-specific error codes. The JSON-RPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
 - **Error Code**: Mapped to the `error.code` field (numeric JSON-RPC error code)
 - **Error Message**: Mapped to the `error.message` field (human-readable string)
@@ -2478,7 +2470,7 @@ Retrieves the agent's extended capability card after authentication.
 
 ### 10.4. Error Handling
 
-A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors. The gRPC error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors. The gRPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
 - **Error Code**: Mapped to the `status.code` field (gRPC status code enum)
 - **Error Message**: Mapped to the `status.message` field (human-readable string)
@@ -2613,7 +2605,7 @@ Content-Type: application/json
 }
 ```
 
-**Referenced Objects:** [`Message`](#414-message), [`MessageSendConfiguration`](#331-messagesendconfiguration)
+**Referenced Objects:** [`SendMessageRequest`](#321-sendmessagerequest), [`Message`](#414-message)
 
 **Response:**
 ```http
@@ -2643,7 +2635,7 @@ GET /v1/tasks?contextId=uuid&status=working&pageSize=50&pageToken=cursor
 
 ### 11.5. Error Handling
 
-HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning. The HTTP+JSON error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning. The HTTP+JSON error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
 - **Error Code**: Mapped to the `error.code` field (string error code) and HTTP status code
 - **Error Message**: Mapped to the `error.message` field (human-readable string)
@@ -2716,12 +2708,10 @@ REST streaming uses Server-Sent Events with the `data` field containing JSON ser
 POST /v1/message:stream
 Content-Type: application/json
 
-{
-  "message": { /* Message object */ }
-}
+{ /* SendMessageRequest object */ }
 ```
 
-**Referenced Objects:** [`Message`](#414-message)
+**Referenced Objects:** [`SendMessageRequest`](#321-sendmessagerequest)
 
 **Response:**
 ```http
@@ -2762,7 +2752,7 @@ Custom bindings **MUST** provide clear mappings for:
 
 ### 12.3. Header Transmission
 
-As specified in [Section 3.3.5 (Headers)](#335-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
+As specified in [Section 3.3.5 (Headers)](#325-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
 
 1. **Transmission Mechanism**: The protocol-specific method for transmitting header key-value pairs
 2. **Value Constraints**: Any limitations on header values (e.g., character encoding, size limits)
@@ -2778,7 +2768,7 @@ As specified in [Section 3.3.5 (Headers)](#335-headers), custom protocol binding
 
 Custom bindings **MUST**:
 
-1. **Map Standard Errors**: Provide mappings for all A2A-specific error types defined in [Section 3.2.2 (Error Handling)](#322-error-handling)
+1. **Map Standard Errors**: Provide mappings for all A2A-specific error types defined in [Section 3.2.2 (Error Handling)](#332-error-handling)
 2. **Preserve Error Information**: Ensure error details are accessible to clients
 3. **Use Appropriate Codes**: Map to protocol-native error codes where applicable
 4. **Document Error Format**: Specify the structure of error responses
