@@ -161,11 +161,14 @@ The primary operation for initiating agent interactions. Clients send a message 
 - [`Task`](#411-task): A task object representing the processing of the message, OR
 - [`Message`](#414-message): A direct response message (for simple interactions that don't require task tracking)
 
+**Errors:**
+
+- [`ContentTypeNotSupportedError`](#322-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
+- Error response: Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
+
 **Behavior:**
 
 The agent MAY create a new task to process the provided message asynchronously or MAY return a direct message response for simple interactions. The operation MUST return immediately with either task information or response message. Task processing MAY continue asynchronously after the response when a [`Task`](#411-task) is returned.
-
-Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
 
 **Protocol Bindings:**
 
@@ -189,11 +192,15 @@ Similar to Send Message but with real-time streaming of updates during processin
 - Subsequent events following a `Task` MAY include stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 - Final completion indicator
 
+**Errors:**
+
+- [`UnsupportedOperationError`](#322-error-handling): Streaming is not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`UnsupportedOperationError`](#322-error-handling): Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
+- [`ContentTypeNotSupportedError`](#322-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
+
 **Behavior:**
 
 The operation MUST establish a streaming connection for real-time updates. The agent MAY return a [`Task`](#411-task) for complex processing with status/artifact updates or MAY return a [`Message`](#414-message) for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results. The stream MUST terminate when processing reaches a final state.
-
-Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) MUST result in an error response indicating that no further messages can be sent to that task.
 
 **Protocol Bindings:**
 
@@ -213,6 +220,10 @@ Retrieves the current state (including status, artifacts, and optionally history
 **Outputs:**
 
 - [`Task`](#411-task): Current state and artifacts of the requested task
+
+**Errors:**
+
+None specific to this operation beyond standard protocol errors.
 
 **Protocol Bindings:**
 
@@ -246,15 +257,19 @@ When includeArtifacts is false (the default), the artifacts field MUST be omitte
 
 Note on nextPageToken: The nextPageToken field MUST always be present in the response. When there are no more results to retrieve (i.e., this is the final page), the field MUST be set to an empty string (""). Clients should check for an empty string to determine if more pages are available.
 
+**Errors:**
+
+None specific to this operation beyond standard protocol errors.
+
 **Behavior:**
 
 The operation MUST return only tasks visible to the authenticated client and MUST use cursor-based pagination for performance and consistency. Tasks MUST be sorted by last update time in descending order. Implementations MUST implement appropriate authorization scoping to ensure clients can only access authorized tasks.
 
-Pagination Strategy: This method uses cursor-based pagination (via pageToken/nextPageToken) rather than offset-based pagination for better performance and consistency, especially with large datasets. Cursor-based pagination avoids the "deep pagination problem" where skipping large numbers of records becomes inefficient for databases. This approach is consistent with the gRPC specification, which also uses cursor-based pagination (page_token/next_page_token).
+**Pagination Strategy**: This method uses cursor-based pagination (via pageToken/nextPageToken) rather than offset-based pagination for better performance and consistency, especially with large datasets. Cursor-based pagination avoids the "deep pagination problem" where skipping large numbers of records becomes inefficient for databases. This approach is consistent with the gRPC specification, which also uses cursor-based pagination (page_token/next_page_token).
 
-Ordering: Implementations MUST return tasks sorted by their last update time in descending order (most recently updated tasks first). This ensures consistent pagination and allows clients to efficiently monitor recent task activity.
+**Ordering**: Implementations MUST return tasks sorted by their last update time in descending order (most recently updated tasks first). This ensures consistent pagination and allows clients to efficiently monitor recent task activity.
 
-Security Note: Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
+**Security Note**: Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
 
 **Protocol Bindings:**
 
@@ -273,6 +288,15 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 **Outputs:**
 
 - Updated [`Task`](#411-task) with cancellation status
+
+**Errors:**
+
+- [`TaskNotCancelableError`](#322-error-handling): The task is not in a cancelable state (e.g., already completed, failed, or canceled).
+- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+
+**Behavior:**
+
+The operation attempts to cancel the specified task and returns its updated state.
 
 
 **Protocol Bindings:**
@@ -295,6 +319,12 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 - [Stream Response](#332-stream-response) object containing:
 - Initial response: [`Task`](#411-task) object with current state
 - Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
+
+**Errors:**
+
+- [`UnsupportedOperationError`](#322-error-handling): Streaming is not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+- [`UnsupportedOperationError`](#322-error-handling): The operation is attempted on a task that was not created by a streaming operation.
 
 **Behavior:**
 
@@ -322,6 +352,11 @@ Creates or updates a push notification configuration for a task to receive async
 
 - [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig): Created configuration with assigned ID
 
+**Errors:**
+
+- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
+
 **Behavior:**
 
 The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#332-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
@@ -347,6 +382,11 @@ Retrieves an existing push notification configuration for a task.
 
 - [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig): The requested configuration
 
+**Errors:**
+
+- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`TaskNotFoundError`](#322-error-handling): The push notification configuration does not exist.
+
 **Behavior:**
 
 The operation MUST return configuration details including webhook URL and notification settings. The operation MUST fail if the configuration does not exist or the client lacks access.
@@ -368,6 +408,11 @@ Retrieves all push notification configurations for a task.
 **Outputs:**
 
 - Array of [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) objects
+
+**Errors:**
+
+- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist or is not accessible.
 
 **Behavior:**
 
@@ -392,6 +437,11 @@ Removes a push notification configuration for a task.
 
 - Confirmation of deletion (implementation-specific)
 
+**Errors:**
+
+- [`PushNotificationNotSupportedError`](#322-error-handling): Push notifications are not supported by the agent (see [Capability Validation](#324-capability-validation)).
+- [`TaskNotFoundError`](#322-error-handling): The task ID does not exist.
+
 **Behavior:**
 
 The operation MUST permanently remove the specified push notification configuration. No further notifications will be sent to the configured webhook after deletion. This operation MUST be idempotent - multiple deletions of the same config have the same effect.
@@ -413,6 +463,11 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 **Outputs:**
 
 - [`AgentCard`](#441-agentcard): A complete Agent Card object, which may contain additional details or skills not present in the public card
+
+**Errors:**
+
+- [`UnsupportedOperationError`](#322-error-handling): The agent does not support authenticated extended cards (see [Capability Validation](#324-capability-validation)).
+- [`ExtendedAgentCardNotConfiguredError`](#322-error-handling): The agent declares support but does not have an extended agent card configured.
 
 **Behavior:**
 
@@ -477,8 +532,18 @@ Protocol bindings **MUST** map these elements to their native error representati
 - Clients must poll or stream to get completion status
 - Agents may continue processing after initial response
 
+#### 3.2.4. Capability Validation
 
-#### 3.2.4 Security Trimming
+Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). When clients attempt to use operations or features that require capabilities not declared as supported in the Agent Card, the agent **MUST** return an appropriate error response:
+
+- **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#322-error-handling).
+- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `message/stream` or `tasks/resubscribe` operations **MUST** return [`UnsupportedOperationError`](#322-error-handling).
+- **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#322-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#322-error-handling).
+- **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`UnsupportedOperationError`](#322-error-handling).
+
+Clients **SHOULD** validate capability support by examining the Agent Card before attempting operations that require optional capabilities.
+
+#### 3.2.5 Security Trimming
 
 Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
 
@@ -1520,29 +1585,38 @@ Agents declare their supported extensions in the [`AgentCard`](#441-agentcard) u
 *Example: Agent declaring extension support in AgentCard:*
 ```json
 {
+  "protocolVersion": "0.3.0",
   "name": "Research Assistant Agent",
   "description": "AI agent for academic research and fact-checking",
   "url": "https://research-agent.example.com/a2a/v1",
   "preferredTransport": "HTTP+JSON",
-  "extensions": [
-    {
-      "identifier": "https://standards.org/extensions/citations/v1",
-      "version": "1.0.0",
-      "required": false,
-      "documentationUrl": "https://standards.org/docs/citations-extension"
-    },
-    {
-      "identifier": "https://example.com/extensions/geolocation/v1",
-      "version": "1.2.0",
-      "required": false,
-      "documentationUrl": "https://example.com/docs/geolocation-ext"
-    }
-  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": [
+      {
+        "uri": "https://standards.org/extensions/citations/v1",
+        "description": "Provides citation formatting and source verification",
+        "required": false
+      },
+      {
+        "uri": "https://example.com/extensions/geolocation/v1",
+        "description": "Location-based search capabilities",
+        "required": false
+      }
+    ]
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
   "skills": [
     {
       "id": "academic-research",
       "name": "Academic Research Assistant",
-      "description": "Provides research assistance with citations and source verification"
+      "description": "Provides research assistance with citations and source verification",
+      "tags": ["research", "citations", "academic"],
+      "examples": ["Find peer-reviewed articles on climate change"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
     }
   ]
 }
@@ -1637,39 +1711,6 @@ Extensions **SHOULD** include version information in their URI identifier. This 
 
 If a client requests a versions of an extension that the agent does not support, the agent **SHOULD** ignore the extension for that interaction and proceed without it, unless the extension is marked as `required` in the AgentCard, in which case the agent **MUST** return an error indicating unsupported extension. It **MUST NOT** fall back to a previous version of the extension automatically.
 
-### 4.7. Data Type Conventions
-
-This section documents conventions for common data types used throughout the A2A protocol.
-
-#### 4.7.1. Timestamps
-
-The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/reference/protobuf/google.protobuf/#timestamp) for all timestamp fields in the Protocol Buffer definitions. When serialized to JSON (in JSON-RPC, HTTP/REST, or other JSON-based bindings), these timestamps **MUST** be represented as ISO 8601 formatted strings in UTC timezone.
-
-**Format Requirements:**
-
-- **Format:** ISO 8601 combined date and time representation
-- **Timezone:** UTC (denoted by 'Z' suffix)
-- **Precision:** Millisecond precision **SHOULD** be used where available
-- **Pattern:** `YYYY-MM-DDTHH:mm:ss.sssZ`
-
-**Examples:**
-
-```json
-{
-  "timestamp": "2025-10-28T10:30:00.000Z",
-  "createdAt": "2025-10-28T14:25:33.142Z",
-  "lastModified": "2025-10-31T17:45:22.891Z"
-}
-```
-
-**Implementation Notes:**
-
-- Protocol Buffer's `google.protobuf.Timestamp` represents time as seconds since Unix epoch (January 1, 1970, 00:00:00 UTC) plus nanoseconds
-- JSON serialization automatically converts this to ISO 8601 format when using standard Protocol Buffer JSON encoding
-- Clients and servers **MUST** parse and generate ISO 8601 timestamps correctly
-- When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
-- Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
-
 ## 5. Protocol Binding Compliance and Interoperability
 
 ### 5.1. Functional Equivalence Requirements
@@ -1703,6 +1744,50 @@ When an agent supports multiple protocols, all supported protocols **MUST**:
 | List push notification configs       | `tasks/pushNotificationConfig/list`      | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
 | Delete push notification config      | `tasks/pushNotificationConfig/delete`    | `DeleteTaskPushNotificationConfig`   | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
 | Get extended Agent Card | `agent/getExtendedAgentCard`     | `GetExtendedAgentCard`               | `GET /v1/extendedAgentCard`                          |
+
+### 5.4. JSON Field Naming Convention
+
+All JSON serializations of the A2A protocol data model **MUST** use **camelCase** naming for field names, not the snake_case convention used in Protocol Buffer definitions.
+
+**Naming Convention:**
+
+- Protocol Buffer field: `protocol_version` → JSON field: `protocolVersion`
+- Protocol Buffer field: `context_id` → JSON field: `contextId`
+- Protocol Buffer field: `default_input_modes` → JSON field: `defaultInputModes`
+- Protocol Buffer field: `push_notification_config` → JSON field: `pushNotificationConfig`
+
+### 5.5. Data Type Conventions
+
+This section documents conventions for common data types used throughout the A2A protocol, particularly as they apply to protocol bindings.
+
+#### 5.5.1. Timestamps
+
+The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/reference/protobuf/google.protobuf/#timestamp) for all timestamp fields in the Protocol Buffer definitions. When serialized to JSON (in JSON-RPC, HTTP/REST, or other JSON-based bindings), these timestamps **MUST** be represented as ISO 8601 formatted strings in UTC timezone.
+
+**Format Requirements:**
+
+- **Format:** ISO 8601 combined date and time representation
+- **Timezone:** UTC (denoted by 'Z' suffix)
+- **Precision:** Millisecond precision **SHOULD** be used where available
+- **Pattern:** `YYYY-MM-DDTHH:mm:ss.sssZ`
+
+**Examples:**
+
+```json
+{
+  "timestamp": "2025-10-28T10:30:00.000Z",
+  "createdAt": "2025-10-28T14:25:33.142Z",
+  "lastModified": "2025-10-31T17:45:22.891Z"
+}
+```
+
+**Implementation Notes:**
+
+- Protocol Buffer's `google.protobuf.Timestamp` represents time as seconds since Unix epoch (January 1, 1970, 00:00:00 UTC) plus nanoseconds
+- JSON serialization automatically converts this to ISO 8601 format when using standard Protocol Buffer JSON encoding
+- Clients and servers **MUST** parse and generate ISO 8601 timestamps correctly
+- When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
+- Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
 
 ## 6. Common Workflows & Examples
 
@@ -1929,7 +2014,7 @@ Clients **MUST** follow these rules:
 
 ```json
 {
-  "protocolVersion": "0.2.9",
+  "protocolVersion": "0.3.0",
   "name": "GeoSpatial Route Planner Agent",
   "description": "Provides advanced route planning, traffic analysis, and custom map generation services. This agent can calculate optimal routes, estimate travel times considering real-time traffic, and create personalized maps with points of interest.",
   "url": "https://georoute-agent.example.com/a2a/v1",
