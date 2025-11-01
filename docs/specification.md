@@ -154,7 +154,7 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 - [`Message`](#414-message): The message containing user input (required)
 - [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- [`metadata`](#333-metadata): Optional metadata for the request (optional)
+- [`metadata`](#334-metadata): Optional metadata for the request (optional)
 
 **Outputs:**
 
@@ -181,7 +181,7 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 - [`Message`](#414-message): The message containing user input (required)
 - [`MessageSendConfiguration`](#331-messagesendconfiguration): Configuration for the send request (optional)
-- [`metadata`](#333-metadata): Optional metadata for the request (optional)
+- [`metadata`](#334-metadata): Optional metadata for the request (optional)
 
 **Outputs:**
 
@@ -208,7 +208,7 @@ Retrieves the current state (including status, artifacts, and optionally history
 **Inputs:**
 
 - `taskId`: Unique identifier of the task to retrieve
-- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#332-history-length-semantics) for details)
+- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#333-history-length-semantics) for details)
 
 **Outputs:**
 
@@ -230,10 +230,10 @@ Retrieves a list of tasks with optional filtering and pagination capabilities. T
 - `status` (optional): Filter tasks by their current status state
 - `pageSize` (optional): Maximum number of tasks to return (must be between 1 and 100, defaults to 50)
 - `pageToken` (optional): Token for pagination from a previous response
-- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#332-history-length-semantics) for details, defaults to 0)
+- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#333-history-length-semantics) for details, defaults to 0)
 - `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
 - `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
-- [`metadata`](#333-metadata) (optional): Request-specific metadata for extensions or custom parameters
+- [`metadata`](#334-metadata) (optional): Request-specific metadata for extensions or custom parameters
 
 When includeArtifacts is false (the default), the artifacts field MUST be omitted entirely from each Task object in the response. The field should not be present as an empty array or null value. When includeArtifacts is true, the artifacts field should be included with its actual content (which may be an empty array if the task has no artifacts).
 
@@ -278,7 +278,7 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 **Protocol Bindings:**
 
 - **JSON-RPC**: [`tasks/cancel`](#935-taskscancel)
-- **gRPC**: [`CancelTask`](#103-core-methods)
+- **gRPC**: [`CancelTask`](#1035-canceltask)
 - **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1122-task-operations)
 
 #### 3.1.6. Resubscribe to Task
@@ -292,6 +292,7 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Outputs:**
 
+- [Stream Response](#332-stream-response) object containing:
 - Initial response: [`Task`](#411-task) object with current state
 - Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 
@@ -310,7 +311,7 @@ The operation MUST return a `Task` object as the first event in the stream, repr
 #### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
 
-Creates or updates a push notification configuration for a task to receive asynchronous updates.
+Creates or updates a push notification configuration for a task to receive asynchronous updates via webhook.
 
 **Inputs:**
 
@@ -323,7 +324,7 @@ Creates or updates a push notification configuration for a task to receive async
 
 **Behavior:**
 
-The operation MUST establish a webhook endpoint for task completion notifications and is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
+The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#332-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
 **Protocol Bindings:**
 
@@ -401,7 +402,7 @@ The operation MUST permanently remove the specified push notification configurat
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
 
-#### 3.1.11. Get Agent Card
+#### 3.1.11. Get Extended Agent Card
 
 Retrieves a potentially more detailed version of the Agent Card after the client has authenticated. This endpoint is available only if `AgentCard.supportsAuthenticatedExtendedCard` is `true`.
 
@@ -417,12 +418,12 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 
 - **Authentication**: The client MUST authenticate the request using one of the schemes declared in the public `AgentCard.securitySchemes` and `AgentCard.security` fields.
 - **Extended Information**: The operation MAY return different details based on client authentication level, including additional skills, capabilities, or configuration not available in the public Agent Card.
-- **Card Replacement**: Clients retrieving this authenticated card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
+- **Card Replacement**: Clients retrieving this extended card SHOULD replace their cached public Agent Card with the content received from this endpoint for the duration of their authenticated session or until the card's version changes.
 - **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`agent/getAuthenticatedExtendedCard`](#938-agentgetauthenticatedextendedcard)
+- **JSON-RPC**: [`agent/getExtendedAgentCard`](#938-agentgetextendedagentcard)
 - **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
 - **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
 
@@ -430,9 +431,9 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 
 #### 3.2.1. Idempotency
 
-- **Get operations** (Get Task, List Tasks, Get Agent Card) are naturally idempotent
-- **Send Message** operations are **NOT** idempotent - each call creates a new task
-- **Cancel Task** operations are idempotent - multiple cancellation requests have the same effect
+- **Get operations** (Get Task, List Tasks, Get Extended Agent Card) are naturally idempotent
+- **Send Message** operations MAY be idempotent. Agents may utilize the messageId to detect duplicate messages.
+- **Cancel Task** operations are idempotent - multiple cancellation requests have the same effect. A duplicate cancellation request MAY return `TaskNotFoundError` if a the task has already been canceled and purged.
 
 #### 3.2.2. Error Handling
 
@@ -444,6 +445,19 @@ All operations may return errors in the following categories:
 - **Resource Errors**: Requested task not found or not accessible
 - **System Errors**: Internal agent failures or temporary unavailability
 
+**Error Payload Structure:**
+
+All error responses in the A2A protocol, regardless of binding, **MUST** convey the following information:
+
+1. **Error Code**: A machine-readable identifier for the error type (e.g., string code, numeric code, or protocol-specific status)
+2. **Error Message**: A human-readable description of the error
+3. **Error Details** (optional): Additional structured information about the error, such as:
+    - Affected fields or parameters
+    - Contextual information (e.g., task ID, timestamp)
+    - Suggestions for resolution
+
+Protocol bindings **MUST** map these elements to their native error representations while preserving semantic meaning. See binding-specific sections for concrete error format examples: [JSON-RPC Error Handling](#94-error-handling), [gRPC Error Handling](#104-error-handling), and [HTTP/REST Error Handling](#115-error-handling).
+
 **A2A-Specific Errors:**
 
 | Error Name                          | Description                                                                                                                                                       |
@@ -454,7 +468,7 @@ All operations may return errors in the following categories:
 | `UnsupportedOperationError`         | The requested operation or a specific aspect of it is not supported by this server agent implementation.                                                          |
 | `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
 | `InvalidAgentResponseError`         | An agent returned a response that does not conform to the specification for the current method.                                                                    |
-| `AuthenticatedExtendedCardNotConfiguredError` | The agent does not have an authenticated extended card configured when one is required for the requested operation.                                     |
+| `ExtendedAgentCardNotConfiguredError` | The agent does not have an extended agent card configured when one is required for the requested operation.                                     |
 
 #### 3.2.3. Asynchronous Processing
 
@@ -462,6 +476,11 @@ All operations may return errors in the following categories:
 - Operations return immediately with task information
 - Clients must poll or stream to get completion status
 - Agents may continue processing after initial response
+
+
+#### 3.2.4 Security Trimming
+
+Implementations MUST ensure appropriate scope limitation based on the authenticated user's permissions. Servers SHOULD NOT return tasks from other users or unauthorized contexts. Even when contextId is not specified in the request, the implementation MUST still scope results to the caller's authorization and tenancy boundaries. The implementation MAY choose to limit results to tasks created by the current authenticated user, tasks within a default user context, or return an authorization error if the scope cannot be safely determined.
 
 ### 3.3. Operation Parameter Objects
 
@@ -475,7 +494,24 @@ Configuration for send message requests.
 --8<-- "specification/grpc/a2a.proto:MessageSendConfiguration"
 ```
 
-#### 3.3.2. History Length Semantics
+#### 3.3.2. Stream Response
+
+A wrapper object used in streaming operations to encapsulate different types of response data.
+
+The Stream Response contains exactly one of the following properties:
+
+- **task**: A [`Task`](#411-task) object containing the current state of the task
+- **message**: A [`Message`](#414-message) object containing a message in the conversation
+- **taskStatusUpdateEvent**: A [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) object indicating a change in task status
+- **taskArtifactUpdateEvent**: A [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) object indicating updates to task artifacts
+
+This wrapper allows streaming endpoints to return different types of updates through a single response stream while maintaining type safety.
+
+```proto
+--8<-- "specification/grpc/a2a.proto:StreamResponse"
+```
+
+#### 3.3.3. History Length Semantics
 
 The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
 
@@ -488,13 +524,14 @@ The `historyLength` parameter appears in multiple operations and controls how mu
 - Servers MUST NOT return more history items than requested when a positive limit is specified
 - When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
 
-#### 3.3.3. Metadata
+#### 3.3.4. Metadata
 
-A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#extensions) can be used to strongly type metadata values for specific use cases.
+A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#46-extensions) can be used to strongly type metadata values for specific use cases.
 
-#### 3.3.4 Headers
+#### 3.3.5 Headers
 
-A key-value map for passing horizontally applicable context or parameters. These values will generally be mapped to protocol headers (e.g., HTTP headers) by the implementation. Where no such capability exists in the protocol, headers can be passed as a metadata value using the reserved `headers` metadata key.
+A key-value map for passing horizontally applicable context or parameters with string keys and string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
+
 
 ### 3.4. Multi-Turn Interactions
 
@@ -514,7 +551,7 @@ Real-time capabilities are provided through:
 - **Connection Management**: Proper handling of connection interruption and reconnection
 - **Buffering**: Events may be buffered during connection outages
 
-This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-binding), [gRPC Protocol Binding](#10-grpc-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Compliance and Interoperability)](#5-binding-compliance-and-interoperability).
+This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Compliance and Interoperability)](#5-protocol-binding-compliance-and-interoperability).
 
 ## 4. Protocol Data Model
 
@@ -1008,6 +1045,101 @@ Defines authentication details for push notifications.
 }
 ```
 
+#### 4.3.4. Push Notification Payload
+<span id="434-push-notification-payload"></span>
+
+When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#332-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
+
+**Request Format:**
+
+```http
+POST {webhook_url}
+Authorization: {authentication_scheme} {credentials}
+Content-Type: application/json
+
+{
+  /* StreamResponse object - one of: */
+  "task": { /* Task object */ },
+  "message": { /* Message object */ },
+  "statusUpdate": { /* TaskStatusUpdateEvent object */ },
+  "artifactUpdate": { /* TaskArtifactUpdateEvent object */ }
+}
+```
+
+**Payload Structure:**
+
+The webhook payload is a [`StreamResponse`](#332-stream-response) object containing exactly one of the following:
+
+- **task**: A [`Task`](#411-task) object with the current task state
+- **message**: A [`Message`](#414-message) object containing a message response
+- **statusUpdate**: A [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) indicating a status change
+- **artifactUpdate**: A [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) indicating artifact updates
+
+**JSON Example (Status Update):**
+
+```json
+{
+  "statusUpdate": {
+    "taskId": "task-12345",
+    "contextId": "context-67890",
+    "status": {
+      "state": "completed",
+      "message": {
+        "messageId": "msg-final-001",
+        "role": "agent",
+        "parts": [
+          {
+            "text": "Task completed successfully"
+          }
+        ]
+      },
+      "timestamp": "2025-10-28T10:30:00Z"
+    },
+    "final": true
+  }
+}
+```
+
+**JSON Example (Artifact Update):**
+
+```json
+{
+  "artifactUpdate": {
+    "taskId": "task-12345",
+    "contextId": "context-67890",
+    "artifact": {
+      "artifactId": "artifact-001",
+      "name": "Final Report",
+      "parts": [
+        {
+          "text": "Report content here..."
+        }
+      ]
+    },
+    "append": false,
+    "lastChunk": true
+  }
+}
+```
+
+**Authentication:**
+
+The agent MUST include authentication credentials in the request headers as specified in the [`PushNotificationConfig.authentication`](#433-authenticationinfo) field. The format follows standard HTTP authentication patterns (Bearer tokens, Basic auth, etc.).
+
+**Client Responsibilities:**
+
+- Clients MUST respond with HTTP 2xx status codes to acknowledge successful receipt
+- Clients SHOULD process notifications idempotently, as duplicate deliveries may occur
+- Clients MUST validate the task ID matches an expected task
+- Clients SHOULD implement appropriate security measures to verify the notification source
+
+**Server Guarantees:**
+
+- Agents MUST attempt delivery at least once for each configured webhook
+- Agents MAY implement retry logic with exponential backoff for failed deliveries
+- Agents SHOULD include a reasonable timeout for webhook requests (recommended: 10-30 seconds)
+- Agents MAY stop attempting delivery after a configured number of consecutive failures
+
 ### 4.4. Agent Discovery Objects
 
 <span id="441-agentcard"></span>
@@ -1214,7 +1346,7 @@ Declares additional protocols supported by the agent.
 
 #### 4.4.7. AgentCardSignature
 
-Represents a JSON Web Signature for agent card verification.
+Represents a JSON Web Signature for Agent Card verification.
 
 ```proto
 --8<-- "specification/grpc/a2a.proto:AgentCardSignature"
@@ -1499,11 +1631,44 @@ Artifacts can include extension data to provide strongly typed context or metada
 }
 ```
 
-#### 4.6.2. Extension Versioning and Compatibility
+#### 4.6.3. Extension Versioning and Compatibility
 
 Extensions **SHOULD** include version information in their URI identifier. This allows clients and agents to negotiate compatible versions of extensions during interactions. A new URI **MUST** be created for breaking changes to an extension.
 
 If a client requests a versions of an extension that the agent does not support, the agent **SHOULD** ignore the extension for that interaction and proceed without it, unless the extension is marked as `required` in the AgentCard, in which case the agent **MUST** return an error indicating unsupported extension. It **MUST NOT** fall back to a previous version of the extension automatically.
+
+### 4.7. Data Type Conventions
+
+This section documents conventions for common data types used throughout the A2A protocol.
+
+#### 4.7.1. Timestamps
+
+The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/reference/protobuf/google.protobuf/#timestamp) for all timestamp fields in the Protocol Buffer definitions. When serialized to JSON (in JSON-RPC, HTTP/REST, or other JSON-based bindings), these timestamps **MUST** be represented as ISO 8601 formatted strings in UTC timezone.
+
+**Format Requirements:**
+
+- **Format:** ISO 8601 combined date and time representation
+- **Timezone:** UTC (denoted by 'Z' suffix)
+- **Precision:** Millisecond precision **SHOULD** be used where available
+- **Pattern:** `YYYY-MM-DDTHH:mm:ss.sssZ`
+
+**Examples:**
+
+```json
+{
+  "timestamp": "2025-10-28T10:30:00.000Z",
+  "createdAt": "2025-10-28T14:25:33.142Z",
+  "lastModified": "2025-10-31T17:45:22.891Z"
+}
+```
+
+**Implementation Notes:**
+
+- Protocol Buffer's `google.protobuf.Timestamp` represents time as seconds since Unix epoch (January 1, 1970, 00:00:00 UTC) plus nanoseconds
+- JSON serialization automatically converts this to ISO 8601 format when using standard Protocol Buffer JSON encoding
+- Clients and servers **MUST** parse and generate ISO 8601 timestamps correctly
+- When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
+- Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
 
 ## 5. Protocol Binding Compliance and Interoperability
 
@@ -1525,15 +1690,19 @@ When an agent supports multiple protocols, all supported protocols **MUST**:
 
 ### 5.3. Method Mapping Reference
 
-| Functionality       | JSON-RPC Method                      | gRPC Method            | REST Endpoint                     |
-| :------------------ | :----------------------------------- | :--------------------- | :-------------------------------- |
-| Send message        | `message/send`                       | `SendMessage`          | `POST /v1/message:send`           |
-| Stream message      | `message/stream`                     | `SendStreamingMessage` | `POST /v1/message:stream`         |
-| Get task            | `tasks/get`                          | `GetTask`              | `GET /v1/tasks/{id}`              |
-| List tasks          | `tasks/list`                         | `ListTasks`            | `GET /v1/tasks`                   |
-| Cancel task         | `tasks/cancel`                       | `CancelTask`           | `POST /v1/tasks/{id}:cancel`      |
-| Resubscribe to task | `tasks/resubscribe`                  | `TaskResubscription`   | `POST /v1/tasks/{id}:resubscribe` |
-| Get agent card      | `agent/getAuthenticatedExtendedCard` | `GetExtendedAgentCard` | `GET /v1/extendedAgentCard`       |
+| Functionality                        | JSON-RPC Method                          | gRPC Method                          | REST Endpoint                                        |
+| :----------------------------------- | :--------------------------------------- | :----------------------------------- | :--------------------------------------------------- |
+| Send message                         | `message/send`                           | `SendMessage`                        | `POST /v1/message:send`                              |
+| Stream message                       | `message/stream`                         | `SendStreamingMessage`               | `POST /v1/message:stream`                            |
+| Get task                             | `tasks/get`                              | `GetTask`                            | `GET /v1/tasks/{id}`                                 |
+| List tasks                           | `tasks/list`                             | `ListTasks`                          | `GET /v1/tasks`                                      |
+| Cancel task                          | `tasks/cancel`                           | `CancelTask`                         | `POST /v1/tasks/{id}:cancel`                         |
+| Resubscribe to task                  | `tasks/resubscribe`                      | `TaskResubscription`                 | `POST /v1/tasks/{id}:resubscribe`                    |
+| Set push notification config         | `tasks/pushNotificationConfig/set`       | `SetTaskPushNotificationConfig`      | `POST /v1/tasks/{id}/pushNotificationConfigs`        |
+| Get push notification config         | `tasks/pushNotificationConfig/get`       | `GetTaskPushNotificationConfig`      | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
+| List push notification configs       | `tasks/pushNotificationConfig/list`      | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
+| Delete push notification config      | `tasks/pushNotificationConfig/delete`    | `DeleteTaskPushNotificationConfig`   | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
+| Get extended Agent Card | `agent/getExtendedAgentCard`     | `GetExtendedAgentCard`               | `GET /v1/extendedAgentCard`                          |
 
 ## 6. Common Workflows & Examples
 
@@ -1644,7 +1813,7 @@ Content-Type: application/json
     "id": "task-uuid",
     "status": {
       "state": "input-required",
-      "update": {
+      "message": {
         "role": "agent",
         "parts": [{"text": "I need more details. Where would you like to fly from and to?"}]
       }
@@ -1986,22 +2155,26 @@ Reconnects to an SSE stream for an ongoing task.
 - `tasks/pushNotificationConfig/list` - List push notification configurations
 - `tasks/pushNotificationConfig/delete` - Delete push notification configuration
 
-#### 9.3.8. `agent/getAuthenticatedExtendedCard`
+#### 9.3.8. `agent/getExtendedAgentCard`
 
-Retrieves an authenticated, potentially extended Agent Card.
+Retrieves an extended Agent Card.
 
 **Request:**
 ```json
 {
   "jsonrpc": "2.0",
   "id": 6,
-  "method": "agent/getAuthenticatedExtendedCard"
+  "method": "agent/getExtendedAgentCard"
 }
 ```
 
 ### 9.4. Error Handling
 
-A2A uses standard JSON-RPC 2.0 error handling with additional A2A-specific error codes.
+A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specification#error_object) with additional A2A-specific error codes. The JSON-RPC error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+
+- **Error Code**: Mapped to the `error.code` field (numeric JSON-RPC error code)
+- **Error Message**: Mapped to the `error.message` field (human-readable string)
+- **Error Details**: Mapped to the `error.data` field (optional structured object)
 
 **Standard JSON-RPC Error Codes:**
 
@@ -2023,7 +2196,7 @@ A2A uses standard JSON-RPC 2.0 error handling with additional A2A-specific error
 | `UnsupportedOperationError`         | `-32004`            | "This operation is not supported"                | The requested operation is not supported             |
 | `ContentTypeNotSupportedError`      | `-32005`            | "Incompatible content types"                     | Content type is not supported by the agent          |
 | `InvalidAgentResponseError`         | `-32006`            | "Invalid agent response"                         | Agent response does not conform to specification     |
-| `AuthenticatedExtendedCardNotConfiguredError` | `-32007` | "Authenticated Extended Card is not configured" | Agent does not have authenticated extended card configured |
+| `ExtendedAgentCardNotConfiguredError` | `-32007` | "Extended Agent Card is not configured" | Agent does not have extended agent card configured |
 
 **Example Standard JSON-RPC Error Response:**
 
@@ -2220,7 +2393,11 @@ Retrieves the agent's extended capability card after authentication.
 
 ### 10.4. Error Handling
 
-A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors.
+A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors. The gRPC error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+
+- **Error Code**: Mapped to the `status.code` field (gRPC status code enum)
+- **Error Message**: Mapped to the `status.message` field (human-readable string)
+- **Error Details**: Mapped to the `status.details` array (repeated structured error information)
 
 #### 10.4.1. A2A Error Mappings
 
@@ -2232,7 +2409,7 @@ A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for form
 | `UnsupportedOperationError`         | Operation not supported          | `UNIMPLEMENTED`       |
 | `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
 | `InvalidAgentResponseError`         | Invalid agent response           | `INTERNAL`            |
-| `AuthenticatedExtendedCardNotConfiguredError` | Authenticated extended card not configured | `FAILED_PRECONDITION` |
+| `ExtendedAgentCardNotConfiguredError` | Extended agent card not configured | `FAILED_PRECONDITION` |
 
 **Example Standard gRPC Error Response:**
 
@@ -2328,7 +2505,7 @@ The HTTP+JSON protocol binding provides a RESTful interface using standard HTTP 
 
 #### 11.2.4. Agent Card
 
-- `GET /v1/extendedAgentCard` - Get authenticated extended agent card
+- `GET /v1/extendedAgentCard` - Get authenticated extended Agent Card
 
 ### 11.3. Request/Response Format
 
@@ -2381,7 +2558,11 @@ GET /v1/tasks?contextId=uuid&status=working&pageSize=50&pageToken=cursor
 
 ### 11.5. Error Handling
 
-HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning.
+HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning. The HTTP+JSON error structure maps to the generic error model defined in [Section 3.2.2](#322-error-handling) as follows:
+
+- **Error Code**: Mapped to the `error.code` field (string error code) and HTTP status code
+- **Error Message**: Mapped to the `error.message` field (human-readable string)
+- **Error Details**: Mapped to the `error.details` object (optional structured information)
 
 #### 11.5.1. A2A Error Mappings
 
@@ -2389,11 +2570,11 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 | :---------------------------------- | :--------------------------- | :--------------------------------- | :------------------------------- |
 | `TaskNotFoundError`                 | `404 Not Found`              | `TASK_NOT_FOUND`                   | Task not found                   |
 | `TaskNotCancelableError`            | `409 Conflict`               | `TASK_NOT_CANCELABLE`              | Task cannot be canceled          |
-| `PushNotificationNotSupportedError` | `501 Not Implemented`        | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
-| `UnsupportedOperationError`         | `501 Not Implemented`        | `OPERATION_NOT_SUPPORTED`          | Operation not supported          |
+| `PushNotificationNotSupportedError` | `400 Bad Request`            | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
+| `UnsupportedOperationError`         | `400 Bad Request`            | `OPERATION_NOT_SUPPORTED`          | Operation not supported          |
 | `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `CONTENT_TYPE_NOT_SUPPORTED`       | Content type not supported       |
 | `InvalidAgentResponseError`         | `502 Bad Gateway`            | `INVALID_AGENT_RESPONSE`           | Invalid agent response           |
-| `AuthenticatedExtendedCardNotConfiguredError` | `501 Not Implemented` | `AUTHENTICATED_EXTENDED_CARD_NOT_CONFIGURED` | Authenticated extended card not configured |
+| `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `EXTENDED_AGENT_CARD_NOT_CONFIGURED` | Extended agent card not configured |
 
 #### 11.5.2. Error Response Format
 
@@ -2472,6 +2653,104 @@ data: {"statusUpdate": { /* TaskStatusUpdateEvent */ }}
 <span id="4192-taskstatusupdateevent"></span><span id="4193-taskartifactupdateevent"></span>
 Streaming responses are simple, linearly ordered sequences: first a `Task` (or single `Message`), then zero or more status or artifact update events until the task reaches a terminal or interrupted state, at which point the stream closes. Implementations SHOULD avoid re-ordering events and MAY optionally resend a final `Task` snapshot before closing.
 
+## 12. Custom Binding Guidelines
+
+While the A2A protocol provides three standard bindings (JSON-RPC, gRPC, and HTTP+JSON/REST), implementers **MAY** create custom protocol bindings to support additional transport mechanisms or communication patterns. This section provides guidelines for developing custom bindings that maintain compliance with the A2A specification.
+
+### 12.1. Binding Requirements
+
+Custom protocol bindings **MUST**:
+
+1. **Implement All Core Operations**: Support all operations defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations)
+2. **Preserve Data Model**: Use data structures functionally equivalent to those defined in [Section 4 (Protocol Data Model)](#4-protocol-data-model)
+3. **Maintain Semantics**: Ensure operations behave consistently with the abstract operation definitions
+4. **Document Completely**: Provide comprehensive documentation of the binding specification
+
+### 12.2. Data Type Mappings
+
+Custom bindings **MUST** provide clear mappings for:
+
+- **Protocol Buffer Types**: Define how each Protocol Buffer message type is represented
+- **Timestamps**: Follow the conventions in [Section 4.7.1 (Timestamps)](#471-timestamps)
+- **Binary Data**: Specify encoding for binary content (e.g., base64 for text-based protocols)
+- **Enumerations**: Define representation of enum values (e.g., strings, integers)
+
+### 12.3. Header Transmission
+
+As specified in [Section 3.3.5 (Headers)](#335-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
+
+1. **Transmission Mechanism**: The protocol-specific method for transmitting header key-value pairs
+2. **Value Constraints**: Any limitations on header values (e.g., character encoding, size limits)
+3. **Reserved Names**: Any header names reserved by the binding itself
+4. **Fallback Strategy**: What happens when the protocol lacks native header support (e.g., passing headers in metadata)
+
+**Example Documentation Requirements:**
+
+- **For native header support**: "Headers are transmitted using HTTP request headers. Header keys are case-insensitive and must conform to RFC 7230. Header values must be UTF-8 strings."
+- **For protocols without headers**: "Headers are serialized as a JSON object and transmitted in the request metadata field `a2a-headers`."
+
+### 12.4. Error Mapping
+
+Custom bindings **MUST**:
+
+1. **Map Standard Errors**: Provide mappings for all A2A-specific error types defined in [Section 3.2.2 (Error Handling)](#322-error-handling)
+2. **Preserve Error Information**: Ensure error details are accessible to clients
+3. **Use Appropriate Codes**: Map to protocol-native error codes where applicable
+4. **Document Error Format**: Specify the structure of error responses
+
+### 12.5. Streaming Support
+
+If the binding supports streaming operations:
+
+1. **Define Stream Mechanism**: Document how streaming is implemented (e.g., WebSockets, long-polling, chunked encoding)
+2. **Event Ordering**: Specify ordering guarantees for streaming events
+3. **Reconnection**: Define behavior for connection interruption and resumption
+4. **Stream Termination**: Specify how stream completion is signaled
+
+If streaming is not supported, the binding **MUST** clearly document this limitation in the Agent Card.
+
+### 12.6. Authentication and Authorization
+
+Custom bindings **MUST**:
+
+1. **Support Standard Schemes**: Implement authentication schemes declared in the Agent Card
+2. **Document Integration**: Specify how credentials are transmitted in the protocol
+3. **Handle Challenges**: Define how authentication challenges are communicated
+4. **Maintain Security**: Follow security best practices for the transport protocol
+
+### 12.7. Agent Card Declaration
+
+Custom bindings **MUST** be declared in the Agent Card:
+
+1. **Transport Identifier**: Use a clear, descriptive transport name
+2. **Endpoint URL**: Provide the full URL where the binding is available
+3. **Documentation Link**: Include a URL to the complete binding specification
+
+**Example:**
+```json
+{
+  "url": "wss://agent.example.com/a2a/websocket",
+  "preferredTransport": "WEBSOCKET",
+  "additionalInterfaces": [
+    {
+      "url": "wss://agent.example.com/a2a/websocket",
+      "transport": "WEBSOCKET"
+    }
+  ]
+}
+```
+
+### 12.8. Interoperability Testing
+
+Custom binding implementers **SHOULD**:
+
+1. **Test Against Reference**: Verify behavior matches standard bindings
+2. **Document Differences**: Clearly note any deviations from standard binding behavior
+3. **Provide Examples**: Include sample requests and responses
+4. **Test Edge Cases**: Verify handling of error conditions, large payloads, and long-running tasks
+
+
+
 ---
 
 ## Appendix A. Migration & Legacy Compatibility
@@ -2485,7 +2764,7 @@ This appendix catalogs renamed protocol messages and objects, their legacy ident
 | `SendStreamingMessageSuccessResponse`           | `StreamResponse`                          | >= 0.5.0                 | Shorter, binding-agnostic streaming response         |
 | `SetTaskPushNotificationConfigRequest`          | `CreateTaskPushNotificationConfigRequest` | >= 0.5.0                 | Explicit creation intent                               |
 | `ListTaskPushNotificationConfigSuccessResponse` | `ListTaskPushNotificationConfigResponse`  | >= 0.5.0                 | Consistent response suffix removal                     |
-| `GetAuthenticatedExtendedCardRequest`           | `GetAgentCardRequest`                     | >= 0.5.0                 | Simplified, generalized naming                         |
+| `GetAuthenticatedExtendedCardRequest`           | `GetExtendedAgentCardRequest`             | >= 0.5.0                 | Removed "Authenticated" from naming                    |
 
 Planned Lifecycle (example timeline; adjust per release strategy):
 
@@ -2534,6 +2813,7 @@ Hidden anchor spans preserve old inbound links:
 <span id="settaskpushnotificationconfigrequest"></span>
 <span id="listtaskpushnotificationconfigsuccessresponse"></span>
 <span id="getauthenticatedextendedcardrequest"></span>
+<span id="938-agentgetauthenticatedextendedcard"></span>
 
 Each legacy span SHOULD be placed adjacent to the current object's heading (to be inserted during detailed object section edits). If an exact numeric-prefixed anchor existed (e.g., `#414-message`), add an additional span matching that historical form if known.
 
@@ -2553,5 +2833,6 @@ Server Implementations MAY:
 ### A.3 Future Automation
 
 Once the proto→schema generation pipeline lands, this appendix will be partially auto-generated (legacy mapping table sourced from a maintained manifest). Until then, edits MUST be manual and reviewed in PRs affecting `a2a.proto`.
+
 
 ---
