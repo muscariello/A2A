@@ -170,9 +170,9 @@ The agent MAY create a new task to process the provided message asynchronously o
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`message/send`](#931-messagesend)
-- **gRPC**: [`SendMessage`](#1031-sendmessage)
-- **HTTP/REST**: [`POST /v1/message:send`](#1121-message-operations)
+- **JSON-RPC**: [`message/send`](#941-messagesend)
+- **gRPC**: [`SendMessage`](#1041-sendmessage)
+- **HTTP/REST**: [`POST /v1/message:send`](#1131-message-operations)
 
 #### 3.1.2. Stream Message
 
@@ -200,9 +200,9 @@ The operation MUST establish a streaming connection for real-time updates. The a
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`message/stream`](#932-messagestream)
-- **gRPC**: [`SendStreamingMessage`](#1032-sendstreamingmessage)
-- **HTTP/REST**: [`POST /v1/message:stream`](#1121-message-operations)
+- **JSON-RPC**: [`message/stream`](#942-messagestream)
+- **gRPC**: [`SendStreamingMessage`](#1042-sendstreamingmessage)
+- **HTTP/REST**: [`POST /v1/message:stream`](#1131-message-operations)
 
 #### 3.1.3. Get Task
 
@@ -223,9 +223,9 @@ None specific to this operation beyond standard protocol errors.
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/get`](#933-tasksget)
-- **gRPC**: [`GetTask`](#1033-gettask)
-- **HTTP/REST**: [`GET /v1/tasks/{id}`](#1122-task-operations)
+- **JSON-RPC**: [`tasks/get`](#943-tasksget)
+- **gRPC**: [`GetTask`](#1043-gettask)
+- **HTTP/REST**: [`GET /v1/tasks/{id}`](#1132-task-operations)
 
 #### 3.1.4. List Tasks
 
@@ -267,9 +267,9 @@ The operation MUST return only tasks visible to the authenticated client and MUS
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/list`](#934-taskslist)
-- **gRPC**: [`ListTasks`](#1034-listtasks)
-- **HTTP/REST**: [`GET /v1/tasks`](#1122-task-operations)
+- **JSON-RPC**: [`tasks/list`](#944-taskslist)
+- **gRPC**: [`ListTasks`](#1044-listtasks)
+- **HTTP/REST**: [`GET /v1/tasks`](#1132-task-operations)
 
 #### 3.1.5. Cancel Task
 
@@ -295,9 +295,9 @@ The operation attempts to cancel the specified task and returns its updated stat
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/cancel`](#935-taskscancel)
-- **gRPC**: [`CancelTask`](#1035-canceltask)
-- **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1122-task-operations)
+- **JSON-RPC**: [`tasks/cancel`](#945-taskscancel)
+- **gRPC**: [`CancelTask`](#1045-canceltask)
+- **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1132-task-operations)
 
 #### 3.1.6. Resubscribe to Task
 <span id="79-tasksresubscribe"></span><span id="1035-taskresubscription"></span>
@@ -328,9 +328,9 @@ The operation MUST return a `Task` object as the first event in the stream, repr
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/resubscribe`](#936-tasksresubscribe)
-- **gRPC**: [`TaskResubscription`](#1035-taskresubscription)
-- **HTTP/REST**: [`POST /v1/tasks/{id}:resubscribe`](#1122-task-operations)
+- **JSON-RPC**: [`tasks/resubscribe`](#946-tasksresubscribe)
+- **gRPC**: [`TaskResubscription`](#1046-taskresubscription)
+- **HTTP/REST**: [`POST /v1/tasks/{id}:resubscribe`](#1132-task-operations)
 
 #### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
@@ -357,9 +357,9 @@ The operation MUST establish a webhook endpoint for task update notifications. W
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#937-push-notification-configuration-methods)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#947-push-notification-configuration-methods)
 - **gRPC**: [`SetTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
 #### 3.1.8. Get Push Notification Config
@@ -387,9 +387,9 @@ The operation MUST return configuration details including webhook URL and notifi
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#937-push-notification-configuration-methods)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#947-push-notification-configuration-methods)
 - **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
 
 #### 3.1.9. List Push Notification Configs
 
@@ -414,9 +414,9 @@ The operation MUST return all active push notification configurations for the sp
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#937-push-notification-configuration-methods)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#947-push-notification-configuration-methods)
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
 
 #### 3.1.10. Delete Push Notification Config
 
@@ -442,9 +442,9 @@ The operation MUST permanently remove the specified push notification configurat
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#937-push-notification-configuration-methods)
+- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#947-push-notification-configuration-methods)
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1123-push-notification-configuration)
+- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
 
 #### 3.1.11. Get Extended Agent Card
 
@@ -474,15 +474,15 @@ For detailed security guidance on extended agent cards, see [Section 7.7.3 Exten
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`agent/getExtendedAgentCard`](#938-agentgetextendedagentcard)
-- **gRPC**: [`GetExtendedAgentCard`](#103-core-methods)
-- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1124-agent-card)
+- **JSON-RPC**: [`agent/getExtendedAgentCard`](#948-agentgetextendedagentcard)
+- **gRPC**: [`GetExtendedAgentCard`](#10411-getextendedagentcard)
+- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1134-agent-card)
 
 ### 3.2. Operation Parameter Objects
 
 This section defines common parameter objects used across multiple operations.
 
-#### 3.3.1. SendMessageRequest
+#### 3.2.1. SendMessageRequest
 
 Request object for sending messages to an agent.
 
@@ -566,7 +566,7 @@ All error responses in the A2A protocol, regardless of binding, **MUST** convey 
     - Contextual information (e.g., task ID, timestamp)
     - Suggestions for resolution
 
-Protocol bindings **MUST** map these elements to their native error representations while preserving semantic meaning. See binding-specific sections for concrete error format examples: [JSON-RPC Error Handling](#94-error-handling), [gRPC Error Handling](#104-error-handling), and [HTTP/REST Error Handling](#115-error-handling).
+Protocol bindings **MUST** map these elements to their native error representations while preserving semantic meaning. See binding-specific sections for concrete error format examples: [JSON-RPC Error Handling](#95-error-handling), [gRPC Error Handling](#105-error-handling), and [HTTP/REST Error Handling](#116-error-handling).
 
 **A2A-Specific Errors:**
 
@@ -3045,13 +3045,13 @@ Custom protocol bindings **MUST**:
 Custom bindings **MUST** provide clear mappings for:
 
 - **Protocol Buffer Types**: Define how each Protocol Buffer message type is represented
-- **Timestamps**: Follow the conventions in [Section 4.7.1 (Timestamps)](#471-timestamps)
+- **Timestamps**: Follow the conventions in [Section 5.5.1 (Timestamps)](#551-timestamps)
 - **Binary Data**: Specify encoding for binary content (e.g., base64 for text-based protocols)
 - **Enumerations**: Define representation of enum values (e.g., strings, integers)
 
 ### 12.3. Header Transmission
 
-As specified in [Section 3.3.5 (Headers)](#325-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
+As specified in [Section 3.2.5 (Headers)](#325-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
 
 1. **Transmission Mechanism**: The protocol-specific method for transmitting header key-value pairs
 2. **Value Constraints**: Any limitations on header values (e.g., character encoding, size limits)
