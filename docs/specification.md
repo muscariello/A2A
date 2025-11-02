@@ -759,11 +759,11 @@ Defines the possible lifecycle states of a Task.
 
 // Interrupted states
 "input-required"
+"auth-required"
 
 // Working states
 "submitted"
 "working"
-"auth-required"
 ```
 
 #### 4.1.4. Message
@@ -823,7 +823,7 @@ Defines the sender of a message in the A2A protocol communication.
 "agent"
 ```
 
-The Role enum distinguishes between messages sent by clients and responses from agents (AGENT). This is used in the [`Message`](#414-message) object to identify the source of each communication turn.
+The Role enum distinguishes between messages sent by clients(`user`) and responses from agents (`agent`). This is used in the [`Message`](#414-message) object to identify the source of each communication turn.
 
 #### 4.1.6. Part
 
@@ -1785,6 +1785,15 @@ All JSON serializations of the A2A protocol data model **MUST** use **camelCase*
 - Protocol Buffer field: `context_id` → JSON field: `contextId`
 - Protocol Buffer field: `default_input_modes` → JSON field: `defaultInputModes`
 - Protocol Buffer field: `push_notification_config` → JSON field: `pushNotificationConfig`
+
+** Enum Values:**
+
+- Enum values **MUST** be represented as their string names in JSON, using lower kebab-case after removing any type name prefixes.
+
+**Examples:**
+
+- Protocol Buffer enum: `TASK_STATE_INPUT_REQUIRED` → JSON value: `input-required`
+- Protocol Buffer enum: `ROLE_USER` → JSON value: `user`
 
 ### 5.5. Data Type Conventions
 
