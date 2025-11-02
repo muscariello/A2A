@@ -2086,9 +2086,9 @@ When implementing push notifications, both agents (as webhook callers) and clien
 - Agents **SHOULD** implement retry logic with exponential backoff for failed deliveries
 - Agents **MAY** stop attempting delivery after a configured number of consecutive failures
 - Agents **SHOULD** validate webhook URLs to prevent SSRF (Server-Side Request Forgery) attacks:
-  - Reject private IP ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
-  - Reject localhost and link-local addresses
-  - Implement URL allowlists where appropriate
+    - Reject private IP ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+    - Reject localhost and link-local addresses
+    - Implement URL allowlists where appropriate
 
 **Client (Webhook Receiver) Requirements:**
 
@@ -2174,7 +2174,6 @@ See also: [Section 3.1.11 Get Extended Agent Card](#3111-get-extended-agent-card
 **Rate Limiting and Abuse Prevention:**
 
 - Agents **SHOULD** implement rate limiting on all operations
-- Rate limits **SHOULD** be enforced per authenticated identity
 - Agents **SHOULD** return appropriate error responses when rate limits are exceeded
 - Agents **MAY** implement different rate limits for different operations or user tiers
 
