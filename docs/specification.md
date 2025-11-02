@@ -631,11 +631,11 @@ It is RECOMMENDED that clients send the `A2A-Version` header with each request t
 
 The A2A protocol defines a canonical data model using Protocol Buffers. All protocol bindings **MUST** provide functionally equivalent representations of these data structures.
 
-"Normative Source" Principle:
+**"Normative Source" Principle:**
 
 The file `specification/grpc/a2a.proto` is the single authoritative normative definition of all protocol data objects and request/response messages. A generated JSON artifact (`specification/json/a2a.json`, produced at build time and not committed) MAY be published for convenience to tooling and the website, but it is a non-normative build artifact. SDK language bindings, schemas, and any other derived forms **MUST** be regenerated from the proto (directly or via code generation) rather than edited manually.
 
-Change Control and Deprecation Lifecycle:
+** Change Control and Deprecation Lifecycle:**
 
 - Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available until the next major release.
 - Documentation: This specification MUST include a Migration Appendix (Appendix A) enumerating legacy→current name mappings with planned removal versions.
@@ -2325,7 +2325,35 @@ The JSON-RPC protocol binding provides a simple, HTTP-based interface using JSON
 - **Method Naming:** `{category}/{action}` pattern (e.g., `message/send`, `tasks/get`)
 - **Streaming:** Server-Sent Events (`text/event-stream`)
 
-### 9.2. Base Request Structure
+### 9.2. Header Transmission
+
+A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using standard HTTP request headers, as JSON-RPC 2.0 operates over HTTP(S).
+
+**Header Requirements:**
+
+- Header names **MUST** be transmitted as HTTP header fields
+- Header keys are case-insensitive per HTTP specification (RFC 7230)
+- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
+
+**Example Request with A2A Headers:**
+
+```http
+POST /rpc HTTP/1.1
+Host: agent.example.com
+Content-Type: application/json
+Authorization: Bearer token
+A2A-Version: 0.3
+A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "message/send",
+  "params": { /* SendMessageRequest */ }
+}
+```
+
+### 9.3. Base Request Structure
 
 All JSON-RPC requests **MUST** follow the standard JSON-RPC 2.0 format:
 
@@ -2338,9 +2366,9 @@ All JSON-RPC requests **MUST** follow the standard JSON-RPC 2.0 format:
 }
 ```
 
-### 9.3. Core Methods
+### 9.4. Core Methods
 
-#### 9.3.1. `message/send`
+#### 9.4.1. `message/send`
 
 Sends a message to initiate or continue a task.
 
@@ -2367,7 +2395,7 @@ Sends a message to initiate or continue a task.
 
 **Referenced Objects:** [`Task`](#411-task), [`Message`](#414-message)
 
-#### 9.3.2. `message/stream`
+#### 9.4.2. `message/stream`
 
 Sends a message and subscribes to real-time updates via Server-Sent Events.
 
@@ -2382,7 +2410,7 @@ data: {"jsonrpc": "2.0", "id": 1, "result": { /* Task | Message | TaskArtifactUp
 
 Referenced Objects: [`Task`](#411-task), [`Message`](#414-message), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent)
 
-#### 9.3.3. `tasks/get`
+#### 9.4.3. `tasks/get`
 
 Retrieves the current state of a task.
 
@@ -2399,7 +2427,7 @@ Retrieves the current state of a task.
 }
 ```
 
-#### 9.3.4. `tasks/list`
+#### 9.4.4. `tasks/list`
 
 Lists tasks with optional filtering and pagination.
 
@@ -2418,7 +2446,7 @@ Lists tasks with optional filtering and pagination.
 }
 ```
 
-#### 9.3.5. `tasks/cancel`
+#### 9.4.5. `tasks/cancel`
 
 Cancels an ongoing task.
 
@@ -2434,7 +2462,7 @@ Cancels an ongoing task.
 }
 ```
 
-#### 9.3.6. `tasks/resubscribe`
+#### 9.4.6. `tasks/resubscribe`
 <span id="936-tasksresubscribe"></span>
 
 Reconnects to an SSE stream for an ongoing task.
@@ -2453,14 +2481,14 @@ Reconnects to an SSE stream for an ongoing task.
 
 **Response:** SSE stream (same format as `message/stream`)
 
-#### 9.3.7. Push Notification Configuration Methods
+#### 9.4.7. Push Notification Configuration Methods
 
 - `tasks/pushNotificationConfig/set` - Set push notification configuration
 - `tasks/pushNotificationConfig/get` - Get push notification configuration
 - `tasks/pushNotificationConfig/list` - List push notification configurations
 - `tasks/pushNotificationConfig/delete` - Delete push notification configuration
 
-#### 9.3.8. `agent/getExtendedAgentCard`
+#### 9.4.8. `agent/getExtendedAgentCard`
 
 Retrieves an extended Agent Card.
 
@@ -2473,7 +2501,7 @@ Retrieves an extended Agent Card.
 }
 ```
 
-### 9.4. Error Handling
+### 9.5. Error Handling
 
 A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specification#error_object) with additional A2A-specific error codes. The JSON-RPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
@@ -2547,7 +2575,38 @@ The gRPC Protocol Binding provides a high-performance, strongly-typed interface 
 - **Serialization:** Protocol Buffers version 3
 - **Service:** Implement the `A2AService` gRPC service
 
-### 10.2. Service Definition
+### 10.2. Header Transmission
+
+A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using gRPC metadata (headers).
+
+**Header Requirements:**
+
+- Header names **MUST** be transmitted as gRPC metadata keys
+- Metadata keys are case-insensitive and automatically converted to lowercase by gRPC
+- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single metadata entry
+
+**Example gRPC Request with A2A Headers:**
+
+```go
+// Go example using gRPC metadata
+md := metadata.Pairs(
+    "authorization", "Bearer token",
+    "a2a-version", "0.3",
+    "a2a-extensions", "https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1",
+)
+ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+// Make the RPC call with the context containing metadata
+response, err := client.SendMessage(ctx, request)
+```
+
+**Metadata Handling:**
+
+- Implementations **MUST** extract A2A headers from gRPC metadata for processing
+- Servers **SHOULD** validate required headers (e.g., `A2A-Version`) from metadata
+- Header keys in metadata are normalized to lowercase per gRPC conventions
+
+### 10.3. Service Definition
 
 ```proto
 service A2AService {
@@ -2565,9 +2624,9 @@ service A2AService {
 }
 ```
 
-### 10.3. Core Methods
+### 10.4. Core Methods
 
-#### 10.3.1. SendMessage
+#### 10.4.1. SendMessage
 
 Sends a message to an agent.
 
@@ -2581,7 +2640,7 @@ Sends a message to an agent.
 --8<-- "specification/grpc/a2a.proto:SendMessageResponse"
 ```
 
-#### 10.3.2. SendStreamingMessage
+#### 10.4.2. SendStreamingMessage
 
 Sends a message with streaming updates.
 
@@ -2592,7 +2651,7 @@ Sends a message with streaming updates.
 
 **Response:** Server streaming [`StreamResponse`](#stream-response) objects.
 
-#### 10.3.3. GetTask
+#### 10.4.3. GetTask
 
 Retrieves task status.
 
@@ -2603,7 +2662,7 @@ Retrieves task status.
 
 **Response:** See [`Task`](#411-task) object definition.
 
-#### 10.3.4. ListTasks
+#### 10.4.4. ListTasks
 
 Lists tasks with filtering.
 
@@ -2617,7 +2676,7 @@ Lists tasks with filtering.
 --8<-- "specification/grpc/a2a.proto:ListTasksResponse"
 ```
 
-#### 10.3.5. CancelTask
+#### 10.4.5. CancelTask
 
 Cancels a running task.
 
@@ -2628,7 +2687,7 @@ Cancels a running task.
 
 **Response:** See [`Task`](#411-task) object definition.
 
-#### 10.3.6. TaskResubscription
+#### 10.4.6. TaskResubscription
 
 Resubscribe to task updates via streaming.
 
@@ -2639,7 +2698,7 @@ Resubscribe to task updates via streaming.
 
 **Response:** Server streaming [`StreamResponse`](#stream-response) objects.
 
-#### 10.3.7. SetTaskPushNotificationConfig
+#### 10.4.7. SetTaskPushNotificationConfig
 
 Creates a push notification configuration for a task.
 
@@ -2650,7 +2709,7 @@ Creates a push notification configuration for a task.
 
 **Response:** See [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) object definition.
 
-#### 10.3.8. GetTaskPushNotificationConfig
+#### 10.4.8. GetTaskPushNotificationConfig
 
 Retrieves an existing push notification configuration for a task.
 
@@ -2661,7 +2720,7 @@ Retrieves an existing push notification configuration for a task.
 
 **Response:** See [`TaskPushNotificationConfig`](#432-taskpushnotificationconfig) object definition.
 
-#### 10.3.9. ListTaskPushNotificationConfig
+#### 10.4.9. ListTaskPushNotificationConfig
 
 Lists all push notification configurations for a task.
 
@@ -2675,7 +2734,7 @@ Lists all push notification configurations for a task.
 --8<-- "specification/grpc/a2a.proto:ListTaskPushNotificationConfigResponse"
 ```
 
-#### 10.3.10. DeleteTaskPushNotificationConfig
+#### 10.4.10. DeleteTaskPushNotificationConfig
 
 Removes a push notification configuration for a task.
 
@@ -2686,7 +2745,7 @@ Removes a push notification configuration for a task.
 
 **Response:** `google.protobuf.Empty`
 
-#### 10.3.11. GetExtendedAgentCard
+#### 10.4.11. GetExtendedAgentCard
 
 Retrieves the agent's extended capability card after authentication.
 
@@ -2697,7 +2756,7 @@ Retrieves the agent's extended capability card after authentication.
 
 **Response:** See [`AgentCard`](#441-agentcard) object definition.
 
-### 10.4. Error Handling
+### 10.5. Error Handling
 
 A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors. The gRPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
@@ -2763,7 +2822,7 @@ status {
 ```
 
 
-### 10.5. Streaming
+### 10.6. Streaming
 
 gRPC streaming uses server streaming RPCs for real-time updates. The `StreamResponse` message provides a union of possible streaming events:
 
@@ -2784,32 +2843,60 @@ The HTTP+JSON protocol binding provides a RESTful interface using standard HTTP 
 - **URL Patterns:** RESTful resource-based URLs
 - **Streaming:** Server-Sent Events for real-time updates
 
-### 11.2. URL Patterns and HTTP Methods
+### 11.2. Header Transmission
 
-#### 11.2.1. Message Operations
+A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using standard HTTP request headers.
+
+**Header Requirements:**
+
+- Header names **MUST** be transmitted as HTTP header fields
+- Header keys are case-insensitive per HTTP specification (RFC 9110)
+- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
+
+**Example Request with A2A Headers:**
+
+```http
+POST /v1/message:send HTTP/1.1
+Host: agent.example.com
+Content-Type: application/json
+Authorization: Bearer token
+A2A-Version: 0.3
+A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1
+
+{
+  "message": {
+    "role": "user",
+    "parts": [{"text": "Find restaurants near me"}]
+  }
+}
+```
+
+### 11.3. URL Patterns and HTTP Methods
+
+#### 11.3.1. Message Operations
 
 - `POST /v1/message:send` - Send message
 - `POST /v1/message:stream` - Send message with streaming (SSE response)
 
-#### 11.2.2. Task Operations
+#### 11.3.2. Task Operations
 
 - `GET /v1/tasks/{id}` - Get task status
 - `GET /v1/tasks` - List tasks (with query parameters)
 - `POST /v1/tasks/{id}:cancel` - Cancel task
 - `POST /v1/tasks/{id}:resubscribe` - Resubscribe to task updates (SSE response, streaming tasks only)
 
-#### 11.2.3. Push Notification Configuration
+#### 11.3.3. Push Notification Configuration
 
 - `POST /v1/tasks/{id}/pushNotificationConfigs` - Create configuration
 - `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` - Get configuration
 - `GET /v1/tasks/{id}/pushNotificationConfigs` - List configurations
 - `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` - Delete configuration
 
-#### 11.2.4. Agent Card
+#### 11.3.4. Agent Card
 
 - `GET /v1/extendedAgentCard` - Get authenticated extended Agent Card
 
-### 11.3. Request/Response Format
+### 11.4. Request/Response Format
 
 All requests and responses use JSON objects structurally equivalent to the Protocol Buffer definitions.
 
@@ -2850,7 +2937,7 @@ Content-Type: application/json
 
 **Referenced Objects:** [`Task`](#411-task)
 
-### 11.4. Query Parameters
+### 11.5. Query Parameters
 
 For GET operations, use query parameters for filtering and pagination:
 
@@ -2858,7 +2945,7 @@ For GET operations, use query parameters for filtering and pagination:
 GET /v1/tasks?contextId=uuid&status=working&pageSize=50&pageToken=cursor
 ```
 
-### 11.5. Error Handling
+### 11.6. Error Handling
 
 HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning. The HTTP+JSON error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
 
@@ -2866,7 +2953,7 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 - **Error Message**: Mapped to the `error.message` field (human-readable string)
 - **Error Details**: Mapped to the `error.details` object (optional structured information)
 
-#### 11.5.1. A2A Error Mappings
+#### 11.6.1. A2A Error Mappings
 
 | A2A Error Type                      | HTTP Status Code             | Type URI                                              | Description                      |
 | :---------------------------------- | :--------------------------- | :---------------------------------------------------- | :------------------------------- |
@@ -2879,7 +2966,7 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 | `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `https://a2a-protocol.org/errors/extended-agent-card-not-configured` | Extended agent card not configured |
 | `VersionNotSupportedError`          | `400 Bad Request`            | `https://a2a-protocol.org/errors/version-not-supported` | Protocol version not supported   |
 
-#### 11.5.2. Error Response Format
+#### 11.6.2. Error Response Format
 
 All error responses **MUST** use the RFC 9457 Problem Details format with `Content-Type: application/problem+json`. The abstract `error.code` maps to the `status` field, and the `error.message` maps to the `detail` field. For A2A-specific errors, the `type` field **MUST** use the corresponding URI from the table above, and additional context **MAY** be included in the `details` object.
 
@@ -2912,7 +2999,7 @@ Content-Type: application/problem+json
 
 
 
-### 11.6. Streaming
+### 11.7. Streaming
 <span id="stream-response"></span>
 
 REST streaming uses Server-Sent Events with the `data` field containing JSON serializations of the protocol data objects:
