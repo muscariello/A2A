@@ -526,8 +526,16 @@ A flexible key-value map for passing additional context or parameters with opera
 
 #### 3.2.5 Headers
 
-A key-value map for passing horizontally applicable context or parameters with string keys and string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
+A key-value map for passing horizontally applicable context or parameters with case-insensitive string keys and case-sensitive string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
 
+**Standard A2A Headers:**
+
+| Header Name | Description | Example Value |
+| :---------- | :---------- | :------------ |
+| `A2A-Extensions` | Comma-separated list of extension URIs that the client wants to use for the request | `https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1` |
+| `A2A-Version` | The A2A protocol version that the client is using. If the version is not supported, the agent returns [`VersionNotSupportedError`](#332-error-handling) | `0.3` |
+
+As header names MAY need to co-exist with other headers defined by the underlying transport protocol or infrastructure, all headers defined by the this specification will be prefixed with `a2a-`.
 
 ### 3.3. Operation Semantics
 
@@ -571,6 +579,7 @@ Protocol bindings **MUST** map these elements to their native error representati
 | `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
 | `InvalidAgentResponseError`         | An agent returned a response that does not conform to the specification for the current method.                                                                    |
 | `ExtendedAgentCardNotConfiguredError` | The agent does not have an extended agent card configured when one is required for the requested operation.                                     |
+| `VersionNotSupportedError`          | The A2A protocol version specified in the request (via `A2A-Version` header) is not supported by the agent. |
 
 #### 3.3.3. Asynchronous Processing
 
@@ -613,6 +622,14 @@ Real-time capabilities are provided through:
 - **Buffering**: Events may be buffered during connection outages
 
 This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Compliance and Interoperability)](#5-protocol-binding-compliance-and-interoperability).
+
+### 3.6 Versioning
+
+The specific version of the A2A protocol in use is identified using the `Major.Minor` elements (e.g. `1.0`) of the corresponding A2A specification version. Patch version numbers do not affect protocol compatibility, SHOULD NOT be included in requests and reponses, and MUST not be considered when clients and servers negotiate protocol versions.
+
+Agents declare support for latest supported protocol version in the `protocolVersion` field in the Agent Card. Agents MAY also support earlier protocol versions. Clients SHOULD specify the desired protocol version in requests using the `A2A-Version` header. If the requested version is not supported by the agent, the agent MUST return a `VersionNotSupportedError`.
+
+It is RECOMMENDED that clients send the `A2A-Version` header with each request to reduce the chances of being broken if an agent upgrades to a new version of the protocol. Sending the `A2A-Version` header provides visibility to agents about version usage in the ecosystem, which can help inform the risks of inplace version upgrades.
 
 ## 4. Protocol Data Model
 
@@ -1920,6 +1937,41 @@ Authorization: Bearer token
 }
 ```
 
+### 6.4. Version Negotiation Error
+
+**Scenario:** Client requests an unsupported protocol version.
+
+**Request:**
+```http
+POST /v1/message:send HTTP/1.1
+Host: agent.example.com
+Content-Type: application/json
+Authorization: Bearer token
+A2A-Version: 0.5
+
+{
+  "message": {
+    "role": "user",
+    "parts": [{"text": "Hello"}],
+    "messageId": "msg-uuid"
+  }
+}
+```
+
+**Response:**
+```http
+HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "type": "https://a2a-protocol.org/errors/version-not-supported",
+  "title": "Protocol Version Not Supported",
+  "status": 400,
+  "detail": "The requested A2A protocol version 0.5 is not supported by this agent",
+  "supportedVersions": ["0.3"]
+}
+```
+
 ## 7. Authentication and Authorization
 
 A2A treats agents as standard enterprise applications, relying on established web security practices. Identity information is handled at the protocol layer, not within A2A semantics.
@@ -2274,6 +2326,7 @@ A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specific
 | `ContentTypeNotSupportedError`      | `-32005`            | "Incompatible content types"                     | Content type is not supported by the agent          |
 | `InvalidAgentResponseError`         | `-32006`            | "Invalid agent response"                         | Agent response does not conform to specification     |
 | `ExtendedAgentCardNotConfiguredError` | `-32007` | "Extended Agent Card is not configured" | Agent does not have extended agent card configured |
+| `VersionNotSupportedError`          | `-32008`            | "Protocol version not supported"                 | The A2A protocol version is not supported            |
 
 **Example Standard JSON-RPC Error Response:**
 
@@ -2476,6 +2529,8 @@ A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for form
 - **Error Message**: Mapped to the `status.message` field (human-readable string)
 - **Error Details**: Mapped to the `status.details` array (repeated structured error information)
 
+For A2A-specific errors, the `google.rpc.ErrorInfo` type **MUST** be used within the `status.details` array to provide structured error information. The `reason` field in `ErrorInfo` **MUST** correspond to the A2A error type using uppercase snake_case without the "Error" suffix. The `domain` field **MUST** be set to `"a2a-protocol.org"`.
+
 #### 10.4.1. A2A Error Mappings
 
 | A2A Error Type                      | Description                      | gRPC Status Code      |
@@ -2487,6 +2542,7 @@ A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for form
 | `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
 | `InvalidAgentResponseError`         | Invalid agent response           | `INTERNAL`            |
 | `ExtendedAgentCardNotConfiguredError` | Extended agent card not configured | `FAILED_PRECONDITION` |
+| `VersionNotSupportedError`          | Protocol version not supported   | `UNIMPLEMENTED`       |
 
 **Example Standard gRPC Error Response:**
 
@@ -2497,15 +2553,13 @@ status {
   message: "Invalid request parameters"
   details: [
     {
-      type_url: "type.googleapis.com/google.rpc.BadRequest"
-      value: {
-        field_violations: [
-          {
-            field: "message.parts"
-            description: "At least one part is required"
-          }
-        ]
-      }
+      type: "type.googleapis.com/google.rpc.BadRequest"
+      field_violations: [
+        {
+          field: "message.parts"
+          description: "At least one part is required"
+        }
+      ]
     }
   ]
 }
@@ -2520,9 +2574,10 @@ status {
   message: "Task with ID 'task-123' not found"
   details: [
     {
-      type_url: "type.googleapis.com/a2a.TaskNotFoundError"
-      value: {
-        error_type: "TaskNotFoundError"
+      type: "type.googleapis.com/google.rpc.ErrorInfo"
+      reason: "TASK_NOT_FOUND"
+      domain: "a2a-protocol.org"
+      metadata: {
         task_id: "task-123"
         timestamp: "2025-10-19T14:30:00Z"
       }
@@ -2531,12 +2586,6 @@ status {
 }
 ```
 
-#### 10.4.2. Implementation Requirements
-
-- **SHOULD** include structured error information in error responses
-- **MUST** include human-readable error messages
-- **MAY** include additional context for development environments
-- **MUST** maintain semantic equivalence with A2A error conditions
 
 ### 10.5. Streaming
 
@@ -2643,61 +2692,49 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 
 #### 11.5.1. A2A Error Mappings
 
-| A2A Error Type                      | HTTP Status Code             | Error Code                         | Description                      |
-| :---------------------------------- | :--------------------------- | :--------------------------------- | :------------------------------- |
-| `TaskNotFoundError`                 | `404 Not Found`              | `TASK_NOT_FOUND`                   | Task not found                   |
-| `TaskNotCancelableError`            | `409 Conflict`               | `TASK_NOT_CANCELABLE`              | Task cannot be canceled          |
-| `PushNotificationNotSupportedError` | `400 Bad Request`            | `PUSH_NOTIFICATIONS_NOT_SUPPORTED` | Push notifications not supported |
-| `UnsupportedOperationError`         | `400 Bad Request`            | `OPERATION_NOT_SUPPORTED`          | Operation not supported          |
-| `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `CONTENT_TYPE_NOT_SUPPORTED`       | Content type not supported       |
-| `InvalidAgentResponseError`         | `502 Bad Gateway`            | `INVALID_AGENT_RESPONSE`           | Invalid agent response           |
-| `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `EXTENDED_AGENT_CARD_NOT_CONFIGURED` | Extended agent card not configured |
+| A2A Error Type                      | HTTP Status Code             | Type URI                                              | Description                      |
+| :---------------------------------- | :--------------------------- | :---------------------------------------------------- | :------------------------------- |
+| `TaskNotFoundError`                 | `404 Not Found`              | `https://a2a-protocol.org/errors/task-not-found`      | Task not found                   |
+| `TaskNotCancelableError`            | `409 Conflict`               | `https://a2a-protocol.org/errors/task-not-cancelable` | Task cannot be canceled          |
+| `PushNotificationNotSupportedError` | `400 Bad Request`            | `https://a2a-protocol.org/errors/push-notification-not-supported` | Push notifications not supported |
+| `UnsupportedOperationError`         | `400 Bad Request`            | `https://a2a-protocol.org/errors/unsupported-operation` | Operation not supported          |
+| `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `https://a2a-protocol.org/errors/content-type-not-supported` | Content type not supported       |
+| `InvalidAgentResponseError`         | `502 Bad Gateway`            | `https://a2a-protocol.org/errors/invalid-agent-response` | Invalid agent response           |
+| `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `https://a2a-protocol.org/errors/extended-agent-card-not-configured` | Extended agent card not configured |
+| `VersionNotSupportedError`          | `400 Bad Request`            | `https://a2a-protocol.org/errors/version-not-supported` | Protocol version not supported   |
 
 #### 11.5.2. Error Response Format
 
+All error responses **MUST** use the RFC 9457 Problem Details format with `Content-Type: application/problem+json`. The abstract `error.code` maps to the `status` field, and the `error.message` maps to the `detail` field. For A2A-specific errors, the `type` field **MUST** use the corresponding URI from the table above, and additional context **MAY** be included in the `details` object.
+
 **Standard HTTP Error Response:**
 
-```json
+```http
 HTTP/1.1 400 Bad Request
-Content-Type: application/json
+Content-Type: application/problem+json
 
 {
-  "error": {
-    "code": "INVALID_REQUEST",
-    "message": "Invalid request payload",
-    "details": {
-      "field": "message.parts",
-      "reason": "At least one part is required"
-    }
-  }
+  "status": 400,
+  "detail": "The request payload is invalid: At least one part is required in message.parts",
 }
 ```
 
 **A2A-Specific Error Response:**
 
-```json
+```http
 HTTP/1.1 404 Not Found
-Content-Type: application/json
+Content-Type: application/problem+json
 
 {
-  "error": {
-    "code": "TASK_NOT_FOUND",
-    "message": "The specified task ID does not exist",
-    "details": {
-      "taskId": "invalid-task-id"
-    }
-  }
+  "type": "https://a2a-protocol.org/errors/task-not-found",
+  "title": "Task Not Found",
+  "status": 404,
+  "detail": "The specified task ID does not exist or is not accessible",
+  "taskId": "invalid-task-id"
 }
 ```
 
-#### 11.5.3. Implementation Requirements
 
-- **MUST** use appropriate HTTP status codes for each A2A error type
-- **MUST** provide human-readable error messages
-- **MUST** include structured error codes in the response body
-- **MAY** include additional context in the `details` object
-
-**Note:** Standard HTTP error handling (authentication, authorization, rate limiting, etc.) follows normal REST conventions and is not part of the A2A-specific error mapping.
 
 ### 11.6. Streaming
 <span id="stream-response"></span>
