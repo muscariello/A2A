@@ -2057,9 +2057,9 @@ Implementations **MUST** ensure appropriate scope limitation based on the authen
 - Servers **SHOULD NOT** return tasks, contexts, or data from other users or unauthorized contexts
 - Even when contextId or other filter parameters are not specified in requests, implementations **MUST** scope results to the caller's authorization and tenancy boundaries
 - The implementation **MAY** choose to limit results to:
-  - Tasks created by the current authenticated user
-  - Tasks within a default user context
-  - Return an authorization error if the scope cannot be safely determined
+    - Tasks created by the current authenticated user
+    - Tasks within a default user context
+    - Return an authorization error if the scope cannot be safely determined
 
 **Operations Requiring Scope Limitation:**
 
