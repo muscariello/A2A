@@ -241,6 +241,8 @@ message DataPart {
 }
 // --8<-- [end:DataPart]
 
+// --8<-- [start:Role]
+// Defines the sender of a message in A2A protocol communication.
 enum Role {
   ROLE_UNSPECIFIED = 0;
   // USER role refers to communication from the client to the server.
@@ -248,6 +250,7 @@ enum Role {
   // AGENT role refers to communication from the server to the client.
   ROLE_AGENT = 2;
 }
+// --8<-- [end:Role]
 
 // --8<-- [start:Message]
 // Message is one unit of communication between client and server. It is
@@ -364,18 +367,24 @@ message AuthenticationInfo {
 // --8<-- [end:PushNotificationAuthenticationInfo]
 
 // --8<-- [start:AgentInterface]
-// Defines additional transport information for the agent.
+// Declares a combination of a target URL and a transport protocol for interacting with the agent.
+// This allows agents to expose the same functionality over multiple protocol binding mechanisms.
 message AgentInterface {
-  // The url this interface is found at.
+  // The URL where this interface is available. Must be a valid absolute HTTPS URL in production.
+  // Example: "https://api.example.com/a2a/v1", "https://grpc.example.com/a2a"
   string url = 1;
-  // The transport supported this url. This is an open form string, to be
-  // easily extended for many transport protocols. The core ones officially
+  // The protocol binding supported at this URL. This is an open form string, to be
+  // easily extended for other protocol bindings. The core ones officially
   // supported are JSONRPC, GRPC and HTTP+JSON.
+  // Example: "JSONRPC", "GRPC", "HTTP+JSON"
   string transport = 2;
 }
 // --8<-- [end:AgentInterface]
 
 // --8<-- [start:AgentCard]
+// AgentCard is a self-describing manifest for an agent. It provides essential
+// metadata including the agent's identity, capabilities, skills, supported
+// communication methods, and security requirements.
 // AgentCard conveys key information:
 // - Overall details (version, name, description, uses)
 // - Skills; a set of actions/solutions the agent can perform
@@ -384,20 +393,40 @@ message AgentInterface {
 // Next ID: 19
 message AgentCard {
   // The version of the A2A protocol this agent supports.
+  // Default: "0.3.0"
   string protocol_version = 16;
   // A human readable name for the agent.
   // Example: "Recipe Agent"
   string name = 1;
-  // A description of the agent's domain of action/solution space.
+  // A human-readable description of the agent, assisting users and other agents
+  // in understanding its purpose.
   // Example: "Agent that helps users with recipes and cooking."
   string description = 2;
-  // A URL to the address the agent is hosted at. This represents the
-  // preferred endpoint as declared by the agent.
+  // The preferred endpoint URL for interacting with the agent.
+  // This URL MUST support the protocol binding specified by 'preferred_transport'.
+  // Example: "https://api.example.com/a2a/v1"
   string url = 3;
-  // The transport of the preferred endpoint. If empty, defaults to JSONRPC.
+  // The protocol binding for the preferred endpoint (the main 'url' field).
+  // If not specified, defaults to 'JSONRPC'.
+  //
+  // IMPORTANT: The transport specified here MUST be available at the main 'url'.
+  // This creates a binding between the main URL and its supported transport protocol.
+  // Clients should prefer this transport and URL combination when both are supported.
+  //
+  // Default: "JSONRPC"
+  // Example: "JSONRPC", "GRPC", "HTTP+JSON"
   string preferred_transport = 14;
-  // Announcement of additional supported transports. Client can use any of
-  // the supported transports.
+  // A list of additional supported interfaces (transport and URL combinations).
+  // This allows agents to expose multiple protocol bindings, potentially at different URLs.
+  //
+  // Best practices:
+  // - SHOULD include all supported protocol bindings for completeness
+  // - SHOULD include an entry matching the main 'url' and 'preferred_transport'
+  // - MAY reuse URLs if multiple protocol bindings are available at the same endpoint
+  // - MUST accurately declare the protocol bindings available at each URL
+  //
+  // Clients can select any interface from this list based on their transport capabilities
+  // and preferences. This enables transport negotiation and fallback scenarios.
   repeated AgentInterface additional_interfaces = 15;
   // The service provider of the agent.
   AgentProvider provider = 4;
@@ -447,73 +476,74 @@ message AgentCard {
 // --8<-- [end:AgentCard]
 
 // --8<-- [start:AgentProvider]
-// Represents information about the service provider of an agent.
+// Represents the service provider of an agent.
 message AgentProvider {
-  // The providers reference url
-  // Example: "https://ai.google.dev"
-  string url = 1;
-  // The providers organization name
+  // The name of the agent provider's organization.
   // Example: "Google"
   string organization = 2;
+  // A URL for the agent provider's website or relevant documentation.
+  // Example: "https://ai.google.dev"
+  string url = 1;
 }
 // --8<-- [end:AgentProvider]
 
 // --8<-- [start:AgentCapabilities]
-// Defines the A2A feature set supported by the agent
+// Defines optional capabilities supported by an agent.
 message AgentCapabilities {
-  // If the agent will support streaming responses
+  // Indicates if the agent supports Server-Sent Events (SSE) for streaming responses.
   bool streaming = 1;
-  // If the agent can send push notifications to the clients webhook
+  // Indicates if the agent supports sending push notifications for asynchronous task updates.
   bool push_notifications = 2;
-  // Extensions supported by this agent.
+  // A list of protocol extensions supported by the agent.
   repeated AgentExtension extensions = 3;
-  // If the agent provides a history of state transitions for a task.
+  // Indicates if the agent provides a history of state transitions for a task.
   bool state_transition_history = 4;
 }
 // --8<-- [end:AgentCapabilities]
 
 // --8<-- [start:AgentExtension]
-// A declaration of an extension supported by an Agent.
+// A declaration of a protocol extension supported by an Agent.
 message AgentExtension {
-  // The URI of the extension.
+  // The unique URI identifying the extension.
   // Example: "https://developers.google.com/identity/protocols/oauth2"
   string uri = 1;
-  // A description of how this agent uses this extension.
+  // A human-readable description of how this agent uses the extension.
   // Example: "Google OAuth 2.0 authentication"
   string description = 2;
-  // Whether the client must follow specific requirements of the extension.
+  // If true, the client must understand and comply with the extension's requirements
+  // to interact with the agent.
   // Example: false
   bool required = 3;
-  // Optional configuration for the extension.
+  // Optional, extension-specific configuration parameters.
   google.protobuf.Struct params = 4;
 }
 // --8<-- [end:AgentExtension]
 
 // --8<-- [start:AgentSkill]
+// Represents a distinct capability or function that an agent can perform.
 // AgentSkill represents a unit of action/solution that the agent can perform.
 // One can think of this as a type of highly reliable solution that an agent
 // can be tasked to provide. Agents have the autonomy to choose how and when
 // to use specific skills, but clients should have confidence that if the
 // skill is defined that unit of action can be reliably performed.
 message AgentSkill {
-  // Unique identifier of the skill within this agent.
+  // A unique identifier for the agent's skill.
   string id = 1;
-  // A human readable name for the skill.
+  // A human-readable name for the skill.
   string name = 2;
-  // A human (or llm) readable description of the skill
-  // details and behaviors.
+  // A detailed description of the skill, intended to help clients or users
+  // understand its purpose and functionality.
   string description = 3;
-  // A set of tags for the skill to enhance categorization/utilization.
+  // A set of keywords describing the skill's capabilities.
   // Example: ["cooking", "customer support", "billing"]
   repeated string tags = 4;
-  // A set of example queries that this skill is designed to address.
-  // These examples should help the caller to understand how to craft requests
-  // to the agent to achieve specific goals.
+  // Example prompts or scenarios that this skill can handle. Provides a hint to
+  // the client on how to use the skill.
   // Example: ["I need a recipe for bread"]
   repeated string examples = 5;
-  // Possible input modalities supported.
+  // The set of supported input MIME types for this skill, overriding the agent's defaults.
   repeated string input_modes = 6;
-  // Possible output modalities produced
+  // The set of supported output MIME types for this skill, overriding the agent's defaults.
   repeated string output_modes = 7;
   // protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
   // Security schemes necessary for the agent to leverage this skill.
@@ -560,6 +590,9 @@ message Security {
 }
 
 // --8<-- [start:SecurityScheme]
+// Defines a security scheme that can be used to secure an agent's endpoints.
+// This is a discriminated union type based on the OpenAPI 3.2 Security Scheme Object.
+// See: https://spec.openapis.org/oas/v3.2.0.html#security-scheme-object
 message SecurityScheme {
   oneof scheme {
     APIKeySecurityScheme api_key_security_scheme = 1;
@@ -572,57 +605,60 @@ message SecurityScheme {
 // --8<-- [end:SecurityScheme]
 
 // --8<-- [start:APIKeySecurityScheme]
+// Defines a security scheme using an API key.
 message APIKeySecurityScheme {
-  // Description of this security scheme.
+  // An optional description for the security scheme.
   string description = 1;
-  // Location of the API key, valid values are "query", "header", or "cookie"
+  // The location of the API key. Valid values are "query", "header", or "cookie".
   string location = 2;
-  // Name of the header, query or cookie parameter to be used.
+  // The name of the header, query, or cookie parameter to be used.
   string name = 3;
 }
 // --8<-- [end:APIKeySecurityScheme]
 
 // --8<-- [start:HTTPAuthSecurityScheme]
+// Defines a security scheme using HTTP authentication.
 message HTTPAuthSecurityScheme {
-  // Description of this security scheme.
+  // An optional description for the security scheme.
   string description = 1;
-  // The name of the HTTP Authentication scheme to be used in the
-  // Authorization header as defined in RFC7235. The values used SHOULD be
-  // registered in the IANA Authentication Scheme registry.
-  // The value is case-insensitive, as defined in RFC7235.
+  // The name of the HTTP Authentication scheme to be used in the Authorization header,
+  // as defined in RFC7235 (e.g., "Bearer").
+  // This value should be registered in the IANA Authentication Scheme registry.
   string scheme = 2;
-  // A hint to the client to identify how the bearer token is formatted.
-  // Bearer tokens are usually generated by an authorization server, so
-  // this information is primarily for documentation purposes.
+  // A hint to the client to identify how the bearer token is formatted (e.g., "JWT").
+  // This is primarily for documentation purposes.
   string bearer_format = 3;
 }
 // --8<-- [end:HTTPAuthSecurityScheme]
 
 // --8<-- [start:OAuth2SecurityScheme]
+// Defines a security scheme using OAuth 2.0.
 message OAuth2SecurityScheme {
-  // Description of this security scheme.
+  // An optional description for the security scheme.
   string description = 1;
-  // An object containing configuration information for the flow types supported
+  // An object containing configuration information for the supported OAuth 2.0 flows.
   OAuthFlows flows = 2;
   // URL to the oauth2 authorization server metadata
-  // [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414). TLS is required.
+  // RFC8414 (https://datatracker.ietf.org/doc/html/rfc8414). TLS is required.
   string oauth2_metadata_url = 3;
 }
 // --8<-- [end:OAuth2SecurityScheme]
 
 // --8<-- [start:OpenIdConnectSecurityScheme]
+// Defines a security scheme using OpenID Connect.
 message OpenIdConnectSecurityScheme {
-  // Description of this security scheme.
+  // An optional description for the security scheme.
   string description = 1;
-  // Well-known URL to discover the [[OpenID-Connect-Discovery]] provider
-  // metadata.
+  // The OpenID Connect Discovery URL for the OIDC provider's metadata.
+  // See: https://openid.net/specs/openid-connect-discovery-1_0.html
   string open_id_connect_url = 2;
 }
 // --8<-- [end:OpenIdConnectSecurityScheme]
 
 // --8<-- [start:MutualTLSSecurityScheme]
+// Defines a security scheme using mTLS authentication.
 message MutualTlsSecurityScheme {
-  // Description of this security scheme.
+  // An optional description for the security scheme.
   string description = 1;
 }
 // --8<-- [end:MutualTLSSecurityScheme]
@@ -639,60 +675,58 @@ message OAuthFlows {
 // --8<-- [end:OAuthFlows]
 
 // --8<-- [start:AuthorizationCodeOAuthFlow]
+// Defines configuration details for the OAuth 2.0 Authorization Code flow.
 message AuthorizationCodeOAuthFlow {
-  // The authorization URL to be used for this flow. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS
+  // The authorization URL to be used for this flow.
+  // This MUST be a URL and use TLS.
   string authorization_url = 1;
-  // The token URL to be used for this flow. This MUST be in the form of a URL.
-  // The OAuth2 standard requires the use of TLS.
+  // The token URL to be used for this flow.
+  // This MUST be a URL and use TLS.
   string token_url = 2;
-  // The URL to be used for obtaining refresh tokens. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS.
+  // The URL to be used for obtaining refresh tokens.
+  // This MUST be a URL and use TLS.
   string refresh_url = 3;
-  // The available scopes for the OAuth2 security scheme. A map between the
-  // scope name and a short description for it. The map MAY be empty.
+  // The available scopes for the OAuth2 security scheme. A map between the scope
+  // name and a short description for it.
   map<string, string> scopes = 4;
 }
 // --8<-- [end:AuthorizationCodeOAuthFlow]
 
 // --8<-- [start:ClientCredentialsOAuthFlow]
+// Defines configuration details for the OAuth 2.0 Client Credentials flow.
 message ClientCredentialsOAuthFlow {
-  // The token URL to be used for this flow. This MUST be in the form of a URL.
-  // The OAuth2 standard requires the use of TLS.
+  // The token URL to be used for this flow. This MUST be a URL and use TLS.
   string token_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS.
+  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the
-  // scope name and a short description for it. The map MAY be empty.
+  // The available scopes for the OAuth2 security scheme. A map between the scope
+  // name and a short description for it.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:ClientCredentialsOAuthFlow]
 
 // --8<-- [start:ImplicitOAuthFlow]
+// Defines configuration details for the OAuth 2.0 Implicit flow.
 message ImplicitOAuthFlow {
-  // The authorization URL to be used for this flow. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS
+  // The authorization URL to be used for this flow. This MUST be a URL and use TLS.
   string authorization_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS.
+  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the
-  // scope name and a short description for it. The map MAY be empty.
+  // The available scopes for the OAuth2 security scheme. A map between the scope
+  // name and a short description for it.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:ImplicitOAuthFlow]
 
 // --8<-- [start:PasswordOAuthFlow]
+// Defines configuration details for the OAuth 2.0 Resource Owner Password flow.
 message PasswordOAuthFlow {
-  // The token URL to be used for this flow. This MUST be in the form of a URL.
-  // The OAuth2 standard requires the use of TLS.
+  // The token URL to be used for this flow. This MUST be a URL and use TLS.
   string token_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be in the
-  // form of a URL. The OAuth2 standard requires the use of TLS.
+  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the
-  // scope name and a short description for it. The map MAY be empty.
+  // The available scopes for the OAuth2 security scheme. A map between the scope
+  // name and a short description for it.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:PasswordOAuthFlow]
@@ -723,39 +757,38 @@ message GetTaskRequest {
 // --8<-- [end:GetTaskRequest]
 
 // --8<-- [start:ListTasksRequest]
+// Parameters for listing tasks with optional filtering criteria.
 message ListTasksRequest {
-  // Filter tasks by context ID to get tasks from a specific conversation
-  // or session.
+  // Filter tasks by context ID to get tasks from a specific conversation or session.
   string context_id = 1;
   // Filter tasks by their current status state.
   TaskState status = 2;
   // Maximum number of tasks to return. Must be between 1 and 100.
   // Defaults to 50 if not specified.
   int32 page_size = 3;
-  // Token for pagination. Use the next_page_token from a previous
-  // ListTasksResponse.
+  // Token for pagination. Use the next_page_token from a previous ListTasksResponse.
   string page_token = 4;
   // The maximum number of messages to include in each task's history. If unset,
   // no limit is imposed. If 0, no history should be returned. If greater
   // than 0, at most that many recent messages should be returned.
   optional int32 history_length = 5;
-  // Filter tasks updated after this timestamp (milliseconds since epoch). Only tasks with a last
-  // updated time greater than or equal to this value will be returned.
+  // Filter tasks updated after this timestamp (milliseconds since epoch).
+  // Only tasks with a last updated time greater than or equal to this value will be returned.
   int64 last_updated_after = 6;
   // Whether to include artifacts in the returned tasks.
   // Defaults to false to reduce payload size.
   bool include_artifacts = 7;
-  // Request-specific metadata for extensions or custom parameters.
+  // Request-specific metadata.
   google.protobuf.Struct metadata = 8;
 }
 // --8<-- [end:ListTasksRequest]
 
 // --8<-- [start:ListTasksResponse]
+// Result object for tasks/list method containing an array of tasks and pagination information.
 message ListTasksResponse {
   // Array of tasks matching the specified criteria.
   repeated Task tasks = 1;
-  // Token for retrieving the next page of results.
-  // Empty string if no more results.
+  // Token for retrieving the next page. Empty string if no more results.
   string next_page_token = 2;
   // Total number of tasks available (before pagination).
   int32 total_size = 3;
@@ -844,15 +877,14 @@ message SendMessageResponse {
 // --8<-- [end:SendMessageResponse]
 
 // --8<-- [start:StreamResponse]
-// The stream response for a message. The stream should be one of the following
-// sequences:
-// If the response is a message, the stream should contain one, and only one,
-// message and then close
-// If the response is a task lifecycle, the first response should be a Task
-// object followed by zero or more TaskStatusUpdateEvents and
-// TaskArtifactUpdateEvents. The stream should complete when the Task
-// if in an interrupted or terminal state. A stream that ends before these
-// conditions are met are
+// The stream response for a message. The stream should be one of the following sequences:
+// - If the response is a message, the stream should contain one, and only one,
+//   message and then close
+// - If the response is a task lifecycle, the first response should be a Task
+//   object followed by zero or more TaskStatusUpdateEvents and
+//   TaskArtifactUpdateEvents. The stream should complete when the Task
+//   is in an interrupted or terminal state. A stream that ends before these
+//   conditions are met indicates an error.
 message StreamResponse {
   oneof payload {
     Task task = 1;
