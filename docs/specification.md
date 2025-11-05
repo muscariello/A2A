@@ -2233,7 +2233,94 @@ Clients **MUST** follow these rules:
 3. Fall back to any supported protocol from `additional_interfaces`
 4. Use the correct URL for the selected protocol
 
-### 8.4. Sample Agent Card
+### 8.4. Agent Card Signing
+
+Agent Cards **MAY** be digitally signed using JSON Web Signature (JWS) as defined in [RFC 7515](https://tools.ietf.org/html/rfc7515) to ensure authenticity and integrity. Signatures allow clients to verify that an Agent Card has not been tampered with and originates from the claimed provider.
+
+#### 8.4.1. Canonicalization Requirements
+
+Before signing, the Agent Card content **MUST** be canonicalized using the JSON Canonicalization Scheme (JCS) as defined in [RFC 8785](https://tools.ietf.org/html/rfc8785). This ensures consistent signature generation and verification across different JSON implementations.
+
+**Canonicalization Rules:**
+
+1. **RFC 8785 Compliance**: The Agent Card JSON **MUST** be canonicalized according to RFC 8785, which specifies:
+   - Predictable ordering of object properties (lexicographic by key)
+   - Consistent representation of numbers, strings, and other primitive values
+   - Removal of insignificant whitespace
+
+2. **Default Value Omission**: Before canonicalization, all properties with default values **MUST** be omitted from the JSON object. This includes:
+   - Properties set to their default values as defined in the Protocol Buffer schema
+   - Empty arrays (`[]`)
+   - Empty strings (`""`)
+   - Properties with `null` values
+   - Optional properties that are not explicitly set
+
+3. **Signature Field Exclusion**: The `signatures` field itself **MUST** be excluded from the content being signed to avoid circular dependencies.
+
+**Example of Default Value Removal:**
+
+Original Agent Card fragment:
+```json
+{
+  "name": "Example Agent",
+  "description": "",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": []
+  },
+  "skills": []  // It is not currently clear is skills is optional or required
+}
+```
+
+After removing default/empty values:
+```json
+{
+  "name": "Example Agent",
+  "capabilities": {}
+}
+```
+
+#### 8.4.2. Signature Format
+
+Signatures **MUST** use the JWS Compact Serialization or JWS JSON Serialization format. The [`AgentCardSignature`](#447-agentcardsignature) object contains the signature components.
+
+**Required JWS Header Parameters:**
+
+- `alg`: Algorithm used for signing (e.g., "ES256", "RS256")
+- `typ`: **SHOULD** be set to "JOSE" for JWS
+- `kid`: Key ID for identifying the signing key
+- `jku` (optional): URL to JSON Web Key Set (JWKS) containing the public key
+
+**Example Signature Generation Process:**
+
+1. Remove properties with default values from the Agent Card
+2. Exclude the `signatures` field
+3. Canonicalize the resulting JSON using RFC 8785
+4. Create JWS protected header with `alg`, `typ`, `kid`, and optionally `jku`
+5. Sign the canonicalized payload using the private key
+6. Encode the signature components
+
+#### 8.4.3. Signature Verification
+
+Clients verifying Agent Card signatures **MUST**:
+
+1. Extract the signature from the `signatures` array
+2. Retrieve the public key using the `kid` and `jku` (or from a trusted key store)
+3. Remove properties with default values from the received Agent Card
+4. Exclude the `signatures` field
+5. Canonicalize the resulting JSON using RFC 8785
+6. Verify the signature against the canonicalized payload
+
+**Security Considerations:**
+
+- Clients **SHOULD** verify at least one signature before trusting an Agent Card
+- Public keys **SHOULD** be retrieved over secure channels (HTTPS)
+- Clients **MAY** maintain a trusted key store for known agent providers
+- Expired or revoked keys **MUST NOT** be used for verification
+- Multiple signatures **MAY** be present to support key rotation
+
+### 8.5. Sample Agent Card
 
 ```json
 {
