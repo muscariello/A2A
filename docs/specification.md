@@ -524,18 +524,18 @@ The `historyLength` parameter appears in multiple operations and controls how mu
 
 A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#46-extensions) can be used to strongly type metadata values for specific use cases.
 
-#### 3.2.5 Headers
+#### 3.2.5 Service Parameters
 
-A key-value map for passing horizontally applicable context or parameters with case-insensitive string keys and case-sensitive string values. The transmission mechanism for these header key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how headers are transmitted in their binding specification.
+A key-value map for passing horizontally applicable context or parameters with case-insensitive string keys and case-sensitive string values. The transmission mechanism for these service parameter key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how service parameters are transmitted in their binding specification.
 
-**Standard A2A Headers:**
+**Standard A2A Service Parameters:**
 
 | Header Name | Description | Example Value |
 | :---------- | :---------- | :------------ |
 | `A2A-Extensions` | Comma-separated list of extension URIs that the client wants to use for the request | `https://example.com/extensions/geolocation/v1,https://standards.org/extensions/citations/v1` |
 | `A2A-Version` | The A2A protocol version that the client is using. If the version is not supported, the agent returns [`VersionNotSupportedError`](#332-error-handling) | `0.3` |
 
-As header names MAY need to co-exist with other headers defined by the underlying transport protocol or infrastructure, all headers defined by the this specification will be prefixed with `a2a-`.
+As service parameter names MAY need to co-exist with other parameters defined by the underlying transport protocol or infrastructure, all service parameters defined by this specification will be prefixed with `a2a-`.
 
 ### 3.3. Operation Semantics
 
@@ -547,13 +547,43 @@ As header names MAY need to co-exist with other headers defined by the underlyin
 
 #### 3.3.2. Error Handling
 
-All operations may return errors in the following categories:
+All operations may return errors in the following categories. Servers **MUST** return appropriate errors and **SHOULD** provide actionable information to help clients resolve issues.
+
+**Error Categories and Server Requirements:**
 
 - **Authentication Errors**: Invalid or missing credentials
+    - Servers **MUST** reject requests with invalid or missing authentication credentials
+    - Servers **SHOULD** include authentication challenge information in the error response
+    - Servers **SHOULD** specify which authentication scheme is required
+    - Example error codes: HTTP `401 Unauthorized`, gRPC `UNAUTHENTICATED`, JSON-RPC custom error
+    - Example scenarios: Missing bearer token, expired API key, invalid OAuth token
+
 - **Authorization Errors**: Insufficient permissions for requested operation
+    - Servers **MUST** return an authorization error when the authenticated client lacks required permissions
+    - Servers **SHOULD** indicate what permission or scope is missing (without leaking sensitive information about resources the client cannot access)
+    - Servers **MUST NOT** reveal the existence of resources the client is not authorized to access
+    - Example error codes: HTTP `403 Forbidden`, gRPC `PERMISSION_DENIED`, JSON-RPC custom error
+    - Example scenarios: Attempting to access a task created by another user, insufficient OAuth scopes
+
 - **Validation Errors**: Invalid input parameters or message format
+    - Servers **MUST** validate all input parameters before processing
+    - Servers **SHOULD** specify which parameter(s) failed validation and why
+    - Servers **SHOULD** provide guidance on valid parameter values or formats
+    - Example error codes: HTTP `400 Bad Request`, gRPC `INVALID_ARGUMENT`, JSON-RPC `-32602 Invalid params`
+    - Example scenarios: Invalid task ID format, missing required message parts, unsupported content type
+
 - **Resource Errors**: Requested task not found or not accessible
+    - Servers **MUST** return a not found error when a requested resource does not exist or is not accessible to the authenticated client
+    - Servers **SHOULD NOT** distinguish between "does not exist" and "not authorized" to prevent information leakage
+    - Example error codes: HTTP `404 Not Found`, gRPC `NOT_FOUND`, JSON-RPC custom error (see A2A-specific errors)
+    - Example scenarios: Task ID does not exist, task has been deleted, configuration not found
+
 - **System Errors**: Internal agent failures or temporary unavailability
+    - Servers **SHOULD** return appropriate error codes for temporary failures vs. permanent errors
+    - Servers **MAY** include retry guidance (e.g., Retry-After header in HTTP)
+    - Servers **SHOULD** log system errors for diagnostic purposes
+    - Example error codes: HTTP `500 Internal Server Error` or `503 Service Unavailable`, gRPC `INTERNAL` or `UNAVAILABLE`, JSON-RPC `-32603 Internal error`
+    - Example scenarios: Database connection failure, downstream service timeout, rate limit exceeded
 
 **Error Payload Structure:**
 
@@ -579,7 +609,8 @@ Protocol bindings **MUST** map these elements to their native error representati
 | `ContentTypeNotSupportedError`      | A Media Type provided in the request's message parts or implied for an artifact is not supported by the agent or the specific skill being invoked.                |
 | `InvalidAgentResponseError`         | An agent returned a response that does not conform to the specification for the current method.                                                                    |
 | `ExtendedAgentCardNotConfiguredError` | The agent does not have an extended agent card configured when one is required for the requested operation.                                     |
-| `VersionNotSupportedError`          | The A2A protocol version specified in the request (via `A2A-Version` header) is not supported by the agent. |
+| `ExtensionSupportRequiredError`     | Client requested use of an extension marked as `required: true` in the Agent Card but the client did not declare support for it in the request.                  |
+| `VersionNotSupportedError`          | The A2A protocol version specified in the request (via `A2A-Version` service parameter) is not supported by the agent. |
 
 #### 3.3.3. Asynchronous Processing
 
@@ -595,18 +626,58 @@ Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). Whe
 - **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#332-error-handling).
 - **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `message/stream` or `tasks/resubscribe` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
 - **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#332-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#332-error-handling).
-- **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`UnsupportedOperationError`](#332-error-handling).
+- **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`ExtensionSupportRequiredError`](#332-error-handling).
 
 Clients **SHOULD** validate capability support by examining the Agent Card before attempting operations that require optional capabilities.
 
 ### 3.4. Multi-Turn Interactions
 
-The A2A protocol supports multi-turn conversations through task context:
+The A2A protocol supports multi-turn conversations through context identifiers and task references, enabling agents to maintain conversational continuity across multiple interactions.
 
-1. **Context Continuity**: [`Task`](#411-task) objects maintain conversation context through `contextId`
-2. **Input Required State**: Agents can request additional input mid-processing
-3. **Follow-up Messages**: Clients can send additional messages with `taskId` reference
-4. **Context Inheritance**: New tasks can inherit context from previous interactions
+#### 3.4.1. Context Identifier Semantics
+
+A `contextId` is an identifier that logically groups multiple related [`Task`](#411-task) and [`Message`](#414-message) objects, providing continuity across a series of interactions.
+
+**Generation and Assignment:**
+
+- Agents **MUST** generate a new `contextId` when processing a [`Message`](#414-message) that does not include a `contextId` field
+- The generated `contextId` **MUST** be included in the response (either [`Task`](#411-task) or [`Message`](#414-message))
+- Agents **MUST** accept and preserve client-provided `contextId` values in subsequent messages within the same conversation
+- `contextId` values **SHOULD** be treated as opaque identifiers by clients
+
+**Grouping and Scope:**
+
+- A `contextId` logically groups multiple [`Task`](#411-task) objects and [`Message`](#414-message) objects that are part of the same conversational context
+- All tasks and messages with the same `contextId` **SHOULD** be treated as part of the same conversational session
+- Agents **MAY** use the `contextId` to maintain internal state, conversational history, or LLM context across multiple interactions
+- Agents **MAY** implement context expiration or cleanup policies and **SHOULD** document any such policies
+
+#### 3.4.2. Multi-Turn Conversation Patterns
+
+The A2A protocol supports several patterns for multi-turn interactions:
+
+**Context Continuity:**
+
+- [`Task`](#411-task) objects maintain conversation context through the `contextId` field
+- Clients **MAY** include the `contextId` in subsequent messages to indicate continuation of a previous interaction
+- Clients **MAY** combine `contextId` with `taskId` references to continue or refine a specific task
+- Clients **MAY** use `contextId` without `taskId` to start a new task within an existing conversation context
+
+**Input Required State:**
+
+- Agents can request additional input mid-processing by transitioning a task to the `input-required` state
+- The client continues the interaction by sending a new message with the same `taskId` and `contextId`
+
+**Follow-up Messages:**
+
+- Clients can send additional messages with `taskId` references to continue or refine existing tasks
+- Clients **SHOULD** use the `referenceTaskIds` field in [`Message`](#414-message) to explicitly reference related tasks
+- Agents **SHOULD** use referenced tasks to understand the context and intent of follow-up requests
+
+**Context Inheritance:**
+
+- New tasks created within the same `contextId` can inherit context from previous interactions
+- Agents **SHOULD** leverage the shared `contextId` to provide contextually relevant responses
 
 ### 3.5. Streaming and Real-Time Updates
 
@@ -1741,7 +1812,7 @@ Extensions **SHOULD** include version information in their URI identifier. This 
 
 If a client requests a versions of an extension that the agent does not support, the agent **SHOULD** ignore the extension for that interaction and proceed without it, unless the extension is marked as `required` in the AgentCard, in which case the agent **MUST** return an error indicating unsupported extension. It **MUST NOT** fall back to a previous version of the extension automatically.
 
-## 5. Protocol Binding Compliance and Interoperability
+## 5. Protocol Binding Requirements and Interoperability
 
 ### 5.1. Functional Equivalence Requirements
 
@@ -2049,29 +2120,31 @@ This section consolidates security guidance and best practices for implementing 
 
 #### 7.7.1. Data Access and Authorization Scoping
 
-Implementations **MUST** ensure appropriate scope limitation based on the authenticated user's permissions. This applies to all operations that access or list tasks and other user-specific resources.
+Implementations **MUST** ensure appropriate scope limitation based on the authenticated caller's authorization boundaries. This applies to all operations that access or list tasks and other resources.
 
 **Authorization Principles:**
 
 - Servers **MUST** implement authorization checks on every [A2A Protocol Operations](#3-a2a-protocol-operations) request
-- Servers **SHOULD NOT** return tasks, contexts, or data from other users or unauthorized contexts
-- Even when contextId or other filter parameters are not specified in requests, implementations **MUST** scope results to the caller's authorization and tenancy boundaries
-- The implementation **MAY** choose to limit results to:
-    - Tasks created by the current authenticated user
-    - Tasks within a default user context
-    - Return an authorization error if the scope cannot be safely determined
+- Implementations **MUST** scope results to the caller's authorized access boundaries as defined by the agent's authorization model
+- Even when `contextId` or other filter parameters are not specified in requests, implementations **MUST** scope results to the caller's authorized access boundaries
+- Authorization models are agent-defined and **MAY** be based on:
+    - User identity (user-based authorization)
+    - Organizational roles or groups (role-based authorization)
+    - Project or workspace membership (project-based authorization)
+    - Organizational or tenant boundaries (multi-tenant authorization)
+    - Custom authorization logic specific to the agent's domain
 
 **Operations Requiring Scope Limitation:**
 
-- [`List Tasks`](#314-list-tasks): **MUST** only return tasks visible to the authenticated client
-- [`Get Task`](#313-get-task): **MUST** verify the authenticated client has access to the requested task
-- Task-related operations (Cancel, Resubscribe, Push Notification Config): **MUST** verify task ownership or access rights
+- [`List Tasks`](#314-list-tasks): **MUST** only return tasks visible to the authenticated client according to the agent's authorization model
+- [`Get Task`](#313-get-task): **MUST** verify the authenticated client has access to the requested task according to the agent's authorization model
+- Task-related operations (Cancel, Resubscribe, Push Notification Config): **MUST** verify the client has appropriate access rights according to the agent's authorization model
 
-**Multi-Tenancy Considerations:**
+**Implementation Requirements:**
 
-- Implementations serving multiple tenants **MUST** enforce strict tenant isolation
-- Task IDs, context IDs, and other identifiers **SHOULD** be scoped to prevent cross-tenant access
-- Authorization checks **MUST** occur before any database queries or operations that could leak information about the existence of resources in other tenants
+- Authorization boundaries are defined by each agent's authorization model, not prescribed by the protocol
+- Authorization checks **MUST** occur before any database queries or operations that could leak information about the existence of resources outside the caller's authorization scope
+- Agents **SHOULD** document their authorization model and access control policies
 
 See also: [Section 3.1.4 List Tasks (Security Note)](#314-list-tasks) for operation-specific requirements.
 
@@ -2411,17 +2484,17 @@ The JSON-RPC protocol binding provides a simple, HTTP-based interface using JSON
 - **Method Naming:** `{category}/{action}` pattern (e.g., `message/send`, `tasks/get`)
 - **Streaming:** Server-Sent Events (`text/event-stream`)
 
-### 9.2. Header Transmission
+### 9.2. Service Parameter Transmission
 
-A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using standard HTTP request headers, as JSON-RPC 2.0 operates over HTTP(S).
+A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using standard HTTP request headers, as JSON-RPC 2.0 operates over HTTP(S).
 
-**Header Requirements:**
+**Service Parameter Requirements:**
 
-- Header names **MUST** be transmitted as HTTP header fields
-- Header keys are case-insensitive per HTTP specification (RFC 7230)
-- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
+- Service parameter names **MUST** be transmitted as HTTP header fields
+- Service parameter keys are case-insensitive per HTTP specification (RFC 7230)
+- Multiple values for the same service parameter (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
 
-**Example Request with A2A Headers:**
+**Example Request with A2A Service Parameters:**
 
 ```http
 POST /rpc HTTP/1.1
@@ -2616,7 +2689,8 @@ A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specific
 | `ContentTypeNotSupportedError`      | `-32005`            | "Incompatible content types"                     | Content type is not supported by the agent          |
 | `InvalidAgentResponseError`         | `-32006`            | "Invalid agent response"                         | Agent response does not conform to specification     |
 | `ExtendedAgentCardNotConfiguredError` | `-32007` | "Extended Agent Card is not configured" | Agent does not have extended agent card configured |
-| `VersionNotSupportedError`          | `-32008`            | "Protocol version not supported"                 | The A2A protocol version is not supported            |
+| `ExtensionSupportRequiredError`     | `-32008`            | "Required extension not supported by client"     | Client must support required extension              |
+| `VersionNotSupportedError`          | `-32009`            | "Protocol version not supported"                 | The A2A protocol version is not supported            |
 
 **Example Standard JSON-RPC Error Response:**
 
@@ -2661,17 +2735,17 @@ The gRPC Protocol Binding provides a high-performance, strongly-typed interface 
 - **Serialization:** Protocol Buffers version 3
 - **Service:** Implement the `A2AService` gRPC service
 
-### 10.2. Header Transmission
+### 10.2. Service Parameter Transmission
 
-A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using gRPC metadata (headers).
+A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using gRPC metadata (headers).
 
-**Header Requirements:**
+**Service Parameter Requirements:**
 
-- Header names **MUST** be transmitted as gRPC metadata keys
+- Service parameter names **MUST** be transmitted as gRPC metadata keys
 - Metadata keys are case-insensitive and automatically converted to lowercase by gRPC
-- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single metadata entry
+- Multiple values for the same service parameter (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single metadata entry
 
-**Example gRPC Request with A2A Headers:**
+**Example gRPC Request with A2A Service Parameters:**
 
 ```go
 // Go example using gRPC metadata
@@ -2688,9 +2762,9 @@ response, err := client.SendMessage(ctx, request)
 
 **Metadata Handling:**
 
-- Implementations **MUST** extract A2A headers from gRPC metadata for processing
-- Servers **SHOULD** validate required headers (e.g., `A2A-Version`) from metadata
-- Header keys in metadata are normalized to lowercase per gRPC conventions
+- Implementations **MUST** extract A2A service parameters from gRPC metadata for processing
+- Servers **SHOULD** validate required service parameters (e.g., `A2A-Version`) from metadata
+- Service parameter keys in metadata are normalized to lowercase per gRPC conventions
 
 ### 10.3. Service Definition
 
@@ -2863,6 +2937,7 @@ For A2A-specific errors, the `google.rpc.ErrorInfo` type **MUST** be used within
 | `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
 | `InvalidAgentResponseError`         | Invalid agent response           | `INTERNAL`            |
 | `ExtendedAgentCardNotConfiguredError` | Extended agent card not configured | `FAILED_PRECONDITION` |
+| `ExtensionSupportRequiredError`     | Required extension not supported | `FAILED_PRECONDITION` |
 | `VersionNotSupportedError`          | Protocol version not supported   | `UNIMPLEMENTED`       |
 
 **Example Standard gRPC Error Response:**
@@ -2929,17 +3004,17 @@ The HTTP+JSON protocol binding provides a RESTful interface using standard HTTP 
 - **URL Patterns:** RESTful resource-based URLs
 - **Streaming:** Server-Sent Events for real-time updates
 
-### 11.2. Header Transmission
+### 11.2. Service Parameter Transmission
 
-A2A headers defined in [Section 3.2.5](#325-headers) **MUST** be transmitted using standard HTTP request headers.
+A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using standard HTTP request headers.
 
-**Header Requirements:**
+**Service Parameter Requirements:**
 
-- Header names **MUST** be transmitted as HTTP header fields
-- Header keys are case-insensitive per HTTP specification (RFC 9110)
-- Multiple values for the same header (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
+- Service parameter names **MUST** be transmitted as HTTP header fields
+- Service parameter keys are case-insensitive per HTTP specification (RFC 9110)
+- Multiple values for the same service parameter (e.g., `A2A-Extensions`) **SHOULD** be comma-separated in a single header field
 
-**Example Request with A2A Headers:**
+**Example Request with A2A Service Parameters:**
 
 ```http
 POST /v1/message:send HTTP/1.1
@@ -3050,6 +3125,7 @@ HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP s
 | `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `https://a2a-protocol.org/errors/content-type-not-supported` | Content type not supported       |
 | `InvalidAgentResponseError`         | `502 Bad Gateway`            | `https://a2a-protocol.org/errors/invalid-agent-response` | Invalid agent response           |
 | `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `https://a2a-protocol.org/errors/extended-agent-card-not-configured` | Extended agent card not configured |
+| `ExtensionSupportRequiredError`     | `400 Bad Request`            | `https://a2a-protocol.org/errors/extension-support-required` | Required extension not supported |
 | `VersionNotSupportedError`          | `400 Bad Request`            | `https://a2a-protocol.org/errors/version-not-supported` | Protocol version not supported   |
 
 #### 11.6.2. Error Response Format
@@ -3116,7 +3192,7 @@ Streaming responses are simple, linearly ordered sequences: first a `Task` (or s
 
 ## 12. Custom Binding Guidelines
 
-While the A2A protocol provides three standard bindings (JSON-RPC, gRPC, and HTTP+JSON/REST), implementers **MAY** create custom protocol bindings to support additional transport mechanisms or communication patterns. This section provides guidelines for developing custom bindings that maintain compliance with the A2A specification.
+While the A2A protocol provides three standard bindings (JSON-RPC, gRPC, and HTTP+JSON/REST), implementers **MAY** create custom protocol bindings to support additional transport mechanisms or communication patterns. Custom bindings **MUST** comply with all requirements defined in [Section 5 (Protocol Binding Requirements and Interoperability)](#5-protocol-binding-requirements-and-interoperability). This section provides additional guidelines specific to developing custom bindings.
 
 ### 12.1. Binding Requirements
 
@@ -3136,19 +3212,19 @@ Custom bindings **MUST** provide clear mappings for:
 - **Binary Data**: Specify encoding for binary content (e.g., base64 for text-based protocols)
 - **Enumerations**: Define representation of enum values (e.g., strings, integers)
 
-### 12.3. Header Transmission
+### 12.3. Service Parameter Transmission
 
-As specified in [Section 3.2.5 (Headers)](#325-headers), custom protocol bindings **MUST** document how headers are transmitted. The binding specification **MUST** address:
+As specified in [Section 3.2.5 (Service Parameters)](#325-service-parameters), custom protocol bindings **MUST** document how service parameters are transmitted. The binding specification **MUST** address:
 
-1. **Transmission Mechanism**: The protocol-specific method for transmitting header key-value pairs
-2. **Value Constraints**: Any limitations on header values (e.g., character encoding, size limits)
-3. **Reserved Names**: Any header names reserved by the binding itself
-4. **Fallback Strategy**: What happens when the protocol lacks native header support (e.g., passing headers in metadata)
+1. **Transmission Mechanism**: The protocol-specific method for transmitting service parameter key-value pairs
+2. **Value Constraints**: Any limitations on service parameter values (e.g., character encoding, size limits)
+3. **Reserved Names**: Any service parameter names reserved by the binding itself
+4. **Fallback Strategy**: What happens when the protocol lacks native header support (e.g., passing service parameters in metadata)
 
 **Example Documentation Requirements:**
 
-- **For native header support**: "Headers are transmitted using HTTP request headers. Header keys are case-insensitive and must conform to RFC 7230. Header values must be UTF-8 strings."
-- **For protocols without headers**: "Headers are serialized as a JSON object and transmitted in the request metadata field `a2a-headers`."
+- **For native header support**: "Service parameters are transmitted using HTTP request headers. Service parameter keys are case-insensitive and must conform to RFC 7230. Service parameter values must be UTF-8 strings."
+- **For protocols without headers**: "Service parameters are serialized as a JSON object and transmitted in the request metadata field `a2a-service-parameters`."
 
 ### 12.4. Error Mapping
 
@@ -3271,6 +3347,8 @@ A2A Protocol Working Group, a2a-protocol@example.org
 **Provisional registration:** No
 
 ### 13.2. HTTP Header Field Registrations
+
+**Note:** The following HTTP headers represent the HTTP-based protocol binding implementation of the abstract A2A service parameters defined in [Section 3.2.5](#325-service-parameters). These registrations are specific to HTTP/HTTPS transports.
 
 #### 13.2.1. A2A-Version Header
 
