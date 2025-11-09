@@ -341,7 +341,7 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 The operation enables real-time monitoring of task progress but can only be used with tasks created by `SendStreamingMessage` operations, not `SendMessage`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
 
-The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `GetTask` and calling `TaskResubscription`.
+The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `GetTask` and calling `ResubscribeToTask`.
 
 #### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
@@ -608,7 +608,7 @@ Protocol bindings **MUST** map these elements to their native error representati
 Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). When clients attempt to use operations or features that require capabilities not declared as supported in the Agent Card, the agent **MUST** return an appropriate error response:
 
 - **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#332-error-handling).
-- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `SendStreamingMessage` or `TaskResubscription` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
+- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `SendStreamingMessage` or `ResubscribeToTask` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
 - **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#332-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#332-error-handling).
 - **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`ExtensionSupportRequiredError`](#332-error-handling).
 
@@ -1802,7 +1802,7 @@ When an agent supports multiple protocols, all supported protocols **MUST**:
 | Get task                             | `GetTask`                                | `GetTask`                            | `GET /v1/tasks/{id}`                                 |
 | List tasks                           | `ListTasks`                              | `ListTasks`                          | `GET /v1/tasks`                                      |
 | Cancel task                          | `CancelTask`                             | `CancelTask`                         | `POST /v1/tasks/{id}:cancel`                         |
-| Resubscribe to task                  | `TaskResubscription`                     | `TaskResubscription`                 | `POST /v1/tasks/{id}:resubscribe`                    |
+| Resubscribe to task                  | `ResubscribeToTask`                      | `ResubscribeToTask`                  | `POST /v1/tasks/{id}:resubscribe`                    |
 | Set push notification config         | `SetTaskPushNotificationConfig`          | `SetTaskPushNotificationConfig`      | `POST /v1/tasks/{id}/pushNotificationConfigs`        |
 | Get push notification config         | `GetTaskPushNotificationConfig`          | `GetTaskPushNotificationConfig`      | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
 | List push notification configs       | `ListTaskPushNotificationConfig`         | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
@@ -2865,7 +2865,7 @@ Cancels an ongoing task.
 }
 ```
 
-#### 9.4.6. `TaskResubscription`
+#### 9.4.6. `ResubscribeToTask`
 <span id="936-tasksresubscribe"></span>
 
 Reconnects to an SSE stream for an ongoing task.
@@ -2875,7 +2875,7 @@ Reconnects to an SSE stream for an ongoing task.
 {
   "jsonrpc": "2.0",
   "id": 5,
-  "method": "TaskResubscription",
+  "method": "ResubscribeToTask",
   "params": {
     "id": "task-uuid"
   }
@@ -3012,7 +3012,7 @@ service A2AService {
   rpc GetTask(GetTaskRequest) returns (Task);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc CancelTask(CancelTaskRequest) returns (Task);
-  rpc TaskResubscription(TaskResubscriptionRequest) returns (stream StreamResponse);
+  rpc ResubscribeToTask(ResubscribeToTaskRequest) returns (stream StreamResponse);
   rpc SetTaskPushNotificationConfig(SetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc GetTaskPushNotificationConfig(GetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc ListTaskPushNotificationConfig(ListTaskPushNotificationConfigRequest) returns (ListTaskPushNotificationConfigResponse);
@@ -3084,13 +3084,13 @@ Cancels a running task.
 
 **Response:** See [`Task`](#411-task) object definition.
 
-#### 10.4.6. TaskResubscription
+#### 10.4.6. ResubscribeToTask
 
 Resubscribe to task updates via streaming.
 
 **Request:**
 ```proto
---8<-- "specification/grpc/a2a.proto:TaskResubscriptionRequest"
+--8<-- "specification/grpc/a2a.proto:ResubscribeToTaskRequest"
 ```
 
 **Response:** Server streaming [`StreamResponse`](#stream-response) objects.

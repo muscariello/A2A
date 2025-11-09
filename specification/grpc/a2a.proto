@@ -52,11 +52,11 @@ service A2AService {
       body: "*"
     };
   }
-  // TaskSubscription is a streaming version of GetTask.
-  rpc TaskSubscription(TaskSubscriptionRequest)
+  // ResubscribeToTask is a streaming version of GetTask.
+  rpc ResubscribeToTask(ResubscribeToTaskRequest)
       returns (stream StreamResponse) {
     option (google.api.http) = {
-      get: "/v1/{name=tasks/*}:subscribe"
+      get: "/v1/{name=tasks/*}:resubscribe"
     };
   }
 
@@ -769,13 +769,13 @@ message SetTaskPushNotificationConfigRequest {
 }
 // --8<-- [end:SetTaskPushNotificationConfigRequest]
 
-// --8<-- [start:TaskResubscriptionRequest]
-message TaskSubscriptionRequest {
+// --8<-- [start:ResubscribeToTaskRequest]
+message ResubscribeToTaskRequest {
   // The resource name of the task to subscribe to.
   // Format: tasks/{task_id}
   string name = 1;
 }
-// --8<-- [end:TaskResubscriptionRequest]
+// --8<-- [end:ResubscribeToTaskRequest]
 
 // --8<-- [start:ListTaskPushNotificationConfigRequest]
 message ListTaskPushNotificationConfigRequest {
