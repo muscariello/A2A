@@ -167,6 +167,12 @@ This section describes the core operations of the A2A protocol in a binding-inde
 
 ### 3.1. Core Operations
 
+The following operations define the fundamental capabilities that all A2A implementations must support, independent of the specific protocol binding used. For a quick reference mapping of these operations to protocol-specific method names and endpoints, see [Section 5.3 (Method Mapping Reference)](#53-method-mapping-reference). For detailed protocol-specific implementation details, see:
+
+- [Section 9: JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding)
+- [Section 10: gRPC Protocol Binding](#10-grpc-protocol-binding)
+- [Section 11: HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding)
+
 #### 3.1.1. Send Message
 
 The primary operation for initiating agent interactions. Clients send a message to an agent and receive either a task that tracks the processing or a direct response message.
@@ -188,12 +194,6 @@ The primary operation for initiating agent interactions. Clients send a message 
 **Behavior:**
 
 The agent MAY create a new task to process the provided message asynchronously or MAY return a direct message response for simple interactions. The operation MUST return immediately with either task information or response message. Task processing MAY continue asynchronously after the response when a [`Task`](#411-task) is returned.
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`SendMessage`](#941-sendmessage)
-- **gRPC**: [`SendMessage`](#1041-sendmessage)
-- **HTTP/REST**: [`POST /v1/message:send`](#1131-message-operations)
 
 #### 3.1.2. Stream Message
 
@@ -225,12 +225,6 @@ The operation MUST establish a streaming connection for real-time updates. The s
 
 The agent MAY return a Task for complex processing with status/artifact updates or MAY return a Message for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results.
 
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`SendStreamingMessage`](#942-sendstreamingmessage)
-- **gRPC**: [`SendStreamingMessage`](#1042-sendstreamingmessage)
-- **HTTP/REST**: [`POST /v1/message:stream`](#1131-message-operations)
-
 #### 3.1.3. Get Task
 
 Retrieves the current state (including status, artifacts, and optionally history) of a previously initiated task. This is typically used for polling the status of a task initiated with message/send, or for fetching the final state of a task after being notified via a push notification or after a stream has ended.
@@ -247,12 +241,6 @@ Retrieves the current state (including status, artifacts, and optionally history
 **Errors:**
 
 None specific to this operation beyond standard protocol errors.
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`GetTask`](#943-gettask)
-- **gRPC**: [`GetTask`](#1043-gettask)
-- **HTTP/REST**: [`GET /v1/tasks/{id}`](#1132-task-operations)
 
 #### 3.1.4. List Tasks
 
@@ -292,12 +280,6 @@ The operation MUST return only tasks visible to the authenticated client and MUS
 
 **Ordering**: Implementations MUST return tasks sorted by their last update time in descending order (most recently updated tasks first). This ensures consistent pagination and allows clients to efficiently monitor recent task activity.
 
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`ListTasks`](#944-listtasks)
-- **gRPC**: [`ListTasks`](#1044-listtasks)
-- **HTTP/REST**: [`GET /v1/tasks`](#1132-task-operations)
-
 #### 3.1.5. Cancel Task
 
 Requests the cancellation of an ongoing task. The server will attempt to cancel the task, but success is not guaranteed (e.g., the task might have already completed or failed, or cancellation might not be supported at its current stage).
@@ -319,12 +301,6 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 
 The operation attempts to cancel the specified task and returns its updated state.
 
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`CancelTask`](#945-canceltask)
-- **gRPC**: [`CancelTask`](#1045-canceltask)
-- **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1132-task-operations)
 
 #### 3.1.6. Resubscribe to Task
 <span id="79-tasksresubscribe"></span>
@@ -353,12 +329,6 @@ The operation enables real-time monitoring of task progress but can only be used
 
 The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `GetTask` and calling `TaskResubscription`.
 
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`TaskResubscription`](#946-taskresubscription)
-- **gRPC**: [`TaskResubscription`](#1046-taskresubscription)
-- **HTTP/REST**: [`POST /v1/tasks/{id}:resubscribe`](#1132-task-operations)
-
 #### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
 
@@ -382,11 +352,6 @@ Creates or updates a push notification configuration for a task to receive async
 
 The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#322-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`SetTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
-- **gRPC**: [`SetTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
 #### 3.1.8. Get Push Notification Config
@@ -412,12 +377,6 @@ Retrieves an existing push notification configuration for a task.
 
 The operation MUST return configuration details including webhook URL and notification settings. The operation MUST fail if the configuration does not exist or the client lacks access.
 
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`GetTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
-- **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
-
 #### 3.1.9. List Push Notification Configs
 
 Retrieves all push notification configurations for a task.
@@ -438,12 +397,6 @@ Retrieves all push notification configurations for a task.
 **Behavior:**
 
 The operation MUST return all active push notification configurations for the specified task and MAY support pagination for tasks with many configurations.
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`ListTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
-- **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
 
 #### 3.1.10. Delete Push Notification Config
 
@@ -466,12 +419,6 @@ Removes a push notification configuration for a task.
 **Behavior:**
 
 The operation MUST permanently remove the specified push notification configuration. No further notifications will be sent to the configured webhook after deletion. This operation MUST be idempotent - multiple deletions of the same config have the same effect.
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`DeleteTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
-- **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
-- **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
 
 #### 3.1.11. Get Extended Agent Card
 
@@ -498,12 +445,6 @@ Retrieves a potentially more detailed version of the Agent Card after the client
 - **Availability**: This operation is only available if the public Agent Card declares `supportsAuthenticatedExtendedCard: true`.
 
 For detailed security guidance on extended agent cards, see [Section 13.3 Extended Agent Card Access Control](#133-extended-agent-card-access-control).
-
-**Protocol Bindings:**
-
-- **JSON-RPC**: [`GetExtendedAgentCard`](#948-getextendedagentcard)
-- **gRPC**: [`GetExtendedAgentCard`](#10411-getextendedagentcard)
-- **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1134-agent-card)
 
 ### 3.2. Operation Parameter Objects
 
@@ -1907,6 +1848,31 @@ The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/referen
 - When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
 - Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
 
+### 5.6. Error Code Mappings
+
+All A2A-specific errors defined in [Section 3.3.2](#332-error-handling) **MUST** be mapped to binding-specific error representations. The following table provides the canonical mappings for each standard protocol binding:
+
+| A2A Error Type | Description | JSON-RPC Code | gRPC Status | HTTP Status | HTTP Type URI |
+| :------------- | :---------- | :------------ | :---------- | :---------- | :------------ |
+| `TaskNotFoundError` | Task not found or not accessible | `-32001` | `NOT_FOUND` | `404 Not Found` | `https://a2a-protocol.org/errors/task-not-found` |
+| `TaskNotCancelableError` | Task not in cancelable state | `-32002` | `FAILED_PRECONDITION` | `409 Conflict` | `https://a2a-protocol.org/errors/task-not-cancelable` |
+| `PushNotificationNotSupportedError` | Push notifications not supported | `-32003` | `UNIMPLEMENTED` | `400 Bad Request` | `https://a2a-protocol.org/errors/push-notification-not-supported` |
+| `UnsupportedOperationError` | Operation not supported | `-32004` | `UNIMPLEMENTED` | `400 Bad Request` | `https://a2a-protocol.org/errors/unsupported-operation` |
+| `ContentTypeNotSupportedError` | Content type not supported | `-32005` | `INVALID_ARGUMENT` | `415 Unsupported Media Type` | `https://a2a-protocol.org/errors/content-type-not-supported` |
+| `InvalidAgentResponseError` | Invalid agent response | `-32006` | `INTERNAL` | `502 Bad Gateway` | `https://a2a-protocol.org/errors/invalid-agent-response` |
+| `ExtendedAgentCardNotConfiguredError` | Extended card not configured | `-32007` | `FAILED_PRECONDITION` | `400 Bad Request` | `https://a2a-protocol.org/errors/extended-agent-card-not-configured` |
+| `ExtensionSupportRequiredError` | Required extension not supported | `-32008` | `FAILED_PRECONDITION` | `400 Bad Request` | `https://a2a-protocol.org/errors/extension-support-required` |
+| `VersionNotSupportedError` | Protocol version not supported | `-32009` | `UNIMPLEMENTED` | `400 Bad Request` | `https://a2a-protocol.org/errors/version-not-supported` |
+
+**Custom Binding Requirements:**
+
+Custom protocol bindings **MUST** define equivalent error code mappings that preserve the semantic meaning of each A2A error type. The binding specification **SHOULD** provide a similar mapping table showing how each A2A error type is represented in the custom binding's native error format.
+
+For binding-specific error structures and examples, see:
+- [JSON-RPC Error Handling](#95-error-handling)
+- [gRPC Error Handling](#105-error-handling)
+- [HTTP/REST Error Handling](#116-error-handling)
+
 ## 6. Common Workflows & Examples
 
 This section provides illustrative examples of common A2A interactions across different bindings.
@@ -2926,11 +2892,11 @@ Retrieves an extended Agent Card.
 
 ### 9.5. Error Handling
 
-A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specification#error_object) with additional A2A-specific error codes. The JSON-RPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
+JSON-RPC error responses use the standard [JSON-RPC 2.0 error object](https://www.jsonrpc.org/specification#error_object) structure, which maps to the generic A2A error model defined in [Section 3.3.2](#332-error-handling) as follows:
 
-- **Error Code**: Mapped to the `error.code` field (numeric JSON-RPC error code)
-- **Error Message**: Mapped to the `error.message` field (human-readable string)
-- **Error Details**: Mapped to the `error.data` field (optional structured object)
+- **Error Code**: Mapped to `error.code` (numeric JSON-RPC error code)
+- **Error Message**: Mapped to `error.message` (human-readable string)
+- **Error Details**: Mapped to `error.data` (optional structured object)
 
 **Standard JSON-RPC Error Codes:**
 
@@ -2944,19 +2910,9 @@ A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specific
 
 **A2A-Specific Error Codes:**
 
-| A2A Error Type                      | JSON-RPC Error Code | Standard Message                                 | Description                                          |
-| :---------------------------------- | :------------------ | :----------------------------------------------- | :--------------------------------------------------- |
-| `TaskNotFoundError`                 | `-32001`            | "Task not found"                                 | The specified task ID does not exist or is not accessible |
-| `TaskNotCancelableError`            | `-32002`            | "Task cannot be canceled"                        | Task is not in a cancelable state                   |
-| `PushNotificationNotSupportedError` | `-32003`            | "Push Notification is not supported"             | Agent does not support push notifications           |
-| `UnsupportedOperationError`         | `-32004`            | "This operation is not supported"                | The requested operation is not supported             |
-| `ContentTypeNotSupportedError`      | `-32005`            | "Incompatible content types"                     | Content type is not supported by the agent          |
-| `InvalidAgentResponseError`         | `-32006`            | "Invalid agent response"                         | Agent response does not conform to specification     |
-| `ExtendedAgentCardNotConfiguredError` | `-32007` | "Extended Agent Card is not configured" | Agent does not have extended agent card configured |
-| `ExtensionSupportRequiredError`     | `-32008`            | "Required extension not supported by client"     | Client must support required extension              |
-| `VersionNotSupportedError`          | `-32009`            | "Protocol version not supported"                 | The A2A protocol version is not supported            |
+A2A-specific errors use codes in the range `-32001` to `-32099`. For the complete mapping of A2A error types to JSON-RPC error codes, see [Section 5.6 (Error Code Mappings)](#56-error-code-mappings).
 
-**Example Standard JSON-RPC Error Response:**
+**Error Response Structure:**
 
 ```json
 {
@@ -2982,11 +2938,14 @@ A2A uses standard [JSON-RPC 2.0 error handling](https://www.jsonrpc.org/specific
     "code": -32001,
     "message": "Task not found",
     "data": {
-      "taskId": "nonexistent-task-id"
+      "taskId": "nonexistent-task-id",
+      "timestamp": "2025-11-09T10:30:00.000Z"
     }
   }
 }
 ```
+
+The `data` field **MAY** include additional context-specific information to help clients diagnose and resolve the error.
 
 ## 10. gRPC Protocol Binding
 
@@ -3182,29 +3141,23 @@ Retrieves the agent's extended capability card after authentication.
 
 ### 10.5. Error Handling
 
-A2A gRPC leverages the API [error standard](https://google.aip.dev/193) for formatting errors. The gRPC error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
+gRPC error responses use the standard [gRPC status](https://grpc.io/docs/guides/error/) structure with [google.rpc.Status](https://github.com/googleapis/googleapis/blob/master/google/rpc/status.proto), which maps to the generic A2A error model defined in [Section 3.3.2](#332-error-handling) as follows:
 
-- **Error Code**: Mapped to the `status.code` field (gRPC status code enum)
-- **Error Message**: Mapped to the `status.message` field (human-readable string)
-- **Error Details**: Mapped to the `status.details` array (repeated structured error information)
+- **Error Code**: Mapped to `status.code` (gRPC status code enum)
+- **Error Message**: Mapped to `status.message` (human-readable string)
+- **Error Details**: Mapped to `status.details` (repeated google.protobuf.Any messages)
 
-For A2A-specific errors, the `google.rpc.ErrorInfo` type **MUST** be used within the `status.details` array to provide structured error information. The `reason` field in `ErrorInfo` **MUST** correspond to the A2A error type using uppercase snake_case without the "Error" suffix. The `domain` field **MUST** be set to `"a2a-protocol.org"`.
+**A2A Error Representation:**
 
-#### 10.4.1. A2A Error Mappings
+For A2A-specific errors, implementations **MUST** include a `google.rpc.ErrorInfo` message in the `status.details` array with:
 
-| A2A Error Type                      | Description                      | gRPC Status Code      |
-| :---------------------------------- | :------------------------------- | :-------------------- |
-| `TaskNotFoundError`                 | Task ID not found                | `NOT_FOUND`           |
-| `TaskNotCancelableError`            | Task not in cancelable state     | `FAILED_PRECONDITION` |
-| `PushNotificationNotSupportedError` | Push notifications not supported | `UNIMPLEMENTED`       |
-| `UnsupportedOperationError`         | Operation not supported          | `UNIMPLEMENTED`       |
-| `ContentTypeNotSupportedError`      | Unsupported content type         | `INVALID_ARGUMENT`    |
-| `InvalidAgentResponseError`         | Invalid agent response           | `INTERNAL`            |
-| `ExtendedAgentCardNotConfiguredError` | Extended agent card not configured | `FAILED_PRECONDITION` |
-| `ExtensionSupportRequiredError`     | Required extension not supported | `FAILED_PRECONDITION` |
-| `VersionNotSupportedError`          | Protocol version not supported   | `UNIMPLEMENTED`       |
+- `reason`: The A2A error type in UPPER_SNAKE_CASE without the "Error" suffix (e.g., `TASK_NOT_FOUND`)
+- `domain`: Set to `"a2a-protocol.org"`
+- `metadata`: Optional map of additional error context
 
-**Example Standard gRPC Error Response:**
+For the complete mapping of A2A error types to gRPC status codes, see [Section 5.6 (Error Code Mappings)](#56-error-code-mappings).
+
+**Error Response Example:**
 
 ```proto
 // Standard gRPC invalid argument error
@@ -3239,7 +3192,7 @@ status {
       domain: "a2a-protocol.org"
       metadata: {
         task_id: "task-123"
-        timestamp: "2025-10-19T14:30:00Z"
+        timestamp: "2025-11-09T10:30:00Z"
       }
     }
   ]
@@ -3372,43 +3325,17 @@ GET /v1/tasks?contextId=uuid&status=working&pageSize=50&pageToken=cursor
 
 ### 11.6. Error Handling
 
-HTTP implementations **MUST** map A2A-specific error codes to appropriate HTTP status codes while preserving semantic meaning. The HTTP+JSON error structure maps to the generic error model defined in [Section 3.2.2](#332-error-handling) as follows:
+HTTP error responses use [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457.html) format with `Content-Type: application/problem+json`, which maps to the generic A2A error model defined in [Section 3.3.2](#332-error-handling) as follows:
 
-- **Error Code**: Mapped to the `error.code` field (string error code) and HTTP status code
-- **Error Message**: Mapped to the `error.message` field (human-readable string)
-- **Error Details**: Mapped to the `error.details` object (optional structured information)
+- **Error Code**: Mapped to `status` (HTTP status code) and `type` (URI identifier)
+- **Error Message**: Mapped to `detail` (human-readable string)
+- **Error Details**: Mapped to extension fields in the problem details object
 
-#### 11.6.1. A2A Error Mappings
+**A2A Error Representation:**
 
-| A2A Error Type                      | HTTP Status Code             | Type URI                                              | Description                      |
-| :---------------------------------- | :--------------------------- | :---------------------------------------------------- | :------------------------------- |
-| `TaskNotFoundError`                 | `404 Not Found`              | `https://a2a-protocol.org/errors/task-not-found`      | Task not found                   |
-| `TaskNotCancelableError`            | `409 Conflict`               | `https://a2a-protocol.org/errors/task-not-cancelable` | Task cannot be canceled          |
-| `PushNotificationNotSupportedError` | `400 Bad Request`            | `https://a2a-protocol.org/errors/push-notification-not-supported` | Push notifications not supported |
-| `UnsupportedOperationError`         | `400 Bad Request`            | `https://a2a-protocol.org/errors/unsupported-operation` | Operation not supported          |
-| `ContentTypeNotSupportedError`      | `415 Unsupported Media Type` | `https://a2a-protocol.org/errors/content-type-not-supported` | Content type not supported       |
-| `InvalidAgentResponseError`         | `502 Bad Gateway`            | `https://a2a-protocol.org/errors/invalid-agent-response` | Invalid agent response           |
-| `ExtendedAgentCardNotConfiguredError` | `400 Bad Request`          | `https://a2a-protocol.org/errors/extended-agent-card-not-configured` | Extended agent card not configured |
-| `ExtensionSupportRequiredError`     | `400 Bad Request`            | `https://a2a-protocol.org/errors/extension-support-required` | Required extension not supported |
-| `VersionNotSupportedError`          | `400 Bad Request`            | `https://a2a-protocol.org/errors/version-not-supported` | Protocol version not supported   |
+For A2A-specific errors, the `type` field **MUST** use the URI from the mapping table in [Section 5.6 (Error Code Mappings)](#56-error-code-mappings). Additional error context **MAY** be included as extension fields in the problem details object.
 
-#### 11.6.2. Error Response Format
-
-All error responses **MUST** use the RFC 9457 Problem Details format with `Content-Type: application/problem+json`. The abstract `error.code` maps to the `status` field, and the `error.message` maps to the `detail` field. For A2A-specific errors, the `type` field **MUST** use the corresponding URI from the table above, and additional context **MAY** be included in the `details` object.
-
-**Standard HTTP Error Response:**
-
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/problem+json
-
-{
-  "status": 400,
-  "detail": "The request payload is invalid: At least one part is required in message.parts",
-}
-```
-
-**A2A-Specific Error Response:**
+**Error Response Example:**
 
 ```http
 HTTP/1.1 404 Not Found
@@ -3419,9 +3346,12 @@ Content-Type: application/problem+json
   "title": "Task Not Found",
   "status": 404,
   "detail": "The specified task ID does not exist or is not accessible",
-  "taskId": "invalid-task-id"
+  "taskId": "task-123",
+  "timestamp": "2025-11-09T10:30:00.000Z"
 }
 ```
+
+Extension fields like `taskId` and `timestamp` provide additional context to help diagnose the error.
 
 
 
