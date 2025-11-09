@@ -196,7 +196,13 @@ Similar to Send Message but with real-time streaming of updates during processin
 
 **Behavior:**
 
-The operation MUST establish a streaming connection for real-time updates. The agent MAY return a [`Task`](#411-task) for complex processing with status/artifact updates or MAY return a [`Message`](#414-message) for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results. The stream MUST terminate when processing reaches a final state.
+The operation MUST establish a streaming connection for real-time updates. The stream MUST follow one of these patterns:
+
+1. **Message-only stream:** If the agent returns a [`Message`](#414-message), the stream MUST contain exactly one message object and then close immediately. No task tracking or updates are provided.
+
+2. **Task lifecycle stream:** If the agent returns a [`Task`](#411-task), the stream MUST begin with the Task object, followed by zero or more [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects. The stream MUST close when the task reaches a terminal state (e.g. completed, failed, cancelled, rejected).
+
+The agent MAY return a Task for complex processing with status/artifact updates or MAY return a Message for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results.
 
 **Protocol Bindings:**
 
@@ -683,10 +689,13 @@ The A2A protocol supports several patterns for multi-turn interactions:
 
 Real-time capabilities are provided through:
 
-- **Streaming Operations**: Stream Message and Resubscribe to Task
-- **Event Types**: Status updates and artifact updates
-- **Connection Management**: Proper handling of connection interruption and reconnection
-- **Buffering**: Events may be buffered during connection outages
+- **Streaming Operations**: Stream Message (Section 3.1.2) and Resubscribe to Task (Section 3.1.6)
+- **Event Types**: TaskStatusUpdateEvent (Section 4.2.1) and TaskArtifactUpdateEvent (Section 4.2.2)
+- **Push Notifications**: WebHook-based push notifications (Section 3.1.7 through 3.1.10 and Section 4.3) for asynchronous task updates. Regardless of the protocol binding being used by the agent, WebHook calls use plain HTTP and the JSON payloads as defined in the HTTP protocol binding.
+
+#### Event Ordering
+
+All streaming implementations MUST deliver events in the order they were generated. Events MUST NOT be reordered during transmission, regardless of protocol binding.
 
 This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Requirements and Interoperability)](#5-binding-requirements-and-interoperability).
 
