@@ -191,7 +191,7 @@ The agent MAY create a new task to process the provided message asynchronously o
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`message/send`](#941-messagesend)
+- **JSON-RPC**: [`SendMessage`](#941-sendmessage)
 - **gRPC**: [`SendMessage`](#1041-sendmessage)
 - **HTTP/REST**: [`POST /v1/message:send`](#1131-message-operations)
 
@@ -227,7 +227,7 @@ The agent MAY return a Task for complex processing with status/artifact updates 
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`message/stream`](#942-messagestream)
+- **JSON-RPC**: [`SendStreamingMessage`](#942-sendstreamingmessage)
 - **gRPC**: [`SendStreamingMessage`](#1042-sendstreamingmessage)
 - **HTTP/REST**: [`POST /v1/message:stream`](#1131-message-operations)
 
@@ -250,7 +250,7 @@ None specific to this operation beyond standard protocol errors.
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/get`](#943-tasksget)
+- **JSON-RPC**: [`GetTask`](#943-gettask)
 - **gRPC**: [`GetTask`](#1043-gettask)
 - **HTTP/REST**: [`GET /v1/tasks/{id}`](#1132-task-operations)
 
@@ -294,7 +294,7 @@ The operation MUST return only tasks visible to the authenticated client and MUS
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/list`](#944-taskslist)
+- **JSON-RPC**: [`ListTasks`](#944-listtasks)
 - **gRPC**: [`ListTasks`](#1044-listtasks)
 - **HTTP/REST**: [`GET /v1/tasks`](#1132-task-operations)
 
@@ -322,12 +322,12 @@ The operation attempts to cancel the specified task and returns its updated stat
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/cancel`](#945-taskscancel)
+- **JSON-RPC**: [`CancelTask`](#945-canceltask)
 - **gRPC**: [`CancelTask`](#1045-canceltask)
 - **HTTP/REST**: [`POST /v1/tasks/{id}:cancel`](#1132-task-operations)
 
 #### 3.1.6. Resubscribe to Task
-<span id="79-tasksresubscribe"></span><span id="1035-taskresubscription"></span>
+<span id="79-tasksresubscribe"></span>
 
 Establishes a streaming connection to resume receiving updates for a specific task that was originally created by a streaming operation.
 
@@ -349,13 +349,13 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Behavior:**
 
-The operation enables real-time monitoring of task progress but can only be used with tasks created by `message/stream` operations, not `message/send`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
+The operation enables real-time monitoring of task progress but can only be used with tasks created by `SendStreamingMessage` operations, not `SendMessage`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
 
-The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `tasks/get` and calling `tasks/resubscribe`.
+The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `GetTask` and calling `TaskResubscription`.
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/resubscribe`](#946-tasksresubscribe)
+- **JSON-RPC**: [`TaskResubscription`](#946-taskresubscription)
 - **gRPC**: [`TaskResubscription`](#1046-taskresubscription)
 - **HTTP/REST**: [`POST /v1/tasks/{id}:resubscribe`](#1132-task-operations)
 
@@ -384,7 +384,7 @@ The operation MUST establish a webhook endpoint for task update notifications. W
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/set`](#947-push-notification-configuration-methods)
+- **JSON-RPC**: [`SetTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
 - **gRPC**: [`SetTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`POST /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
@@ -414,7 +414,7 @@ The operation MUST return configuration details including webhook URL and notifi
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/get`](#947-push-notification-configuration-methods)
+- **JSON-RPC**: [`GetTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
 - **gRPC**: [`GetTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
 
@@ -441,7 +441,7 @@ The operation MUST return all active push notification configurations for the sp
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/list`](#947-push-notification-configuration-methods)
+- **JSON-RPC**: [`ListTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
 - **gRPC**: [`ListTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`GET /v1/tasks/{id}/pushNotificationConfigs`](#1133-push-notification-configuration)
 
@@ -469,7 +469,7 @@ The operation MUST permanently remove the specified push notification configurat
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`tasks/pushNotificationConfig/delete`](#947-push-notification-configuration-methods)
+- **JSON-RPC**: [`DeleteTaskPushNotificationConfig`](#947-push-notification-configuration-methods)
 - **gRPC**: [`DeleteTaskPushNotificationConfig`](#grpc-push-notification-operations)
 - **HTTP/REST**: [`DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}`](#1133-push-notification-configuration)
 
@@ -501,7 +501,7 @@ For detailed security guidance on extended agent cards, see [Section 7.7.3 Exten
 
 **Protocol Bindings:**
 
-- **JSON-RPC**: [`agent/getExtendedAgentCard`](#948-agentgetextendedagentcard)
+- **JSON-RPC**: [`GetExtendedAgentCard`](#948-getextendedagentcard)
 - **gRPC**: [`GetExtendedAgentCard`](#10411-getextendedagentcard)
 - **HTTP/REST**: [`GET /v1/extendedAgentCard`](#1134-agent-card)
 
@@ -530,9 +530,11 @@ The Stream Response contains exactly one of the following properties:
 
 This wrapper allows streaming endpoints to return different types of updates through a single response stream while maintaining type safety.
 
+<span id="72-messagestream"></span>
 ```proto
 --8<-- "specification/grpc/a2a.proto:StreamResponse"
 ```
+
 
 #### 3.2.3. History Length Semantics
 
@@ -651,7 +653,7 @@ Protocol bindings **MUST** map these elements to their native error representati
 Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). When clients attempt to use operations or features that require capabilities not declared as supported in the Agent Card, the agent **MUST** return an appropriate error response:
 
 - **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#332-error-handling).
-- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `message/stream` or `tasks/resubscribe` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
+- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `SendStreamingMessage` or `TaskResubscription` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
 - **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#332-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#332-error-handling).
 - **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`ExtensionSupportRequiredError`](#332-error-handling).
 
@@ -734,8 +736,8 @@ The A2A protocol defines a canonical data model using Protocol Buffers. All prot
 
 ### 4.1. Core Objects
 
-<span id="61-task-object"></span>
 #### 4.1.1. Task
+<span id="61-task-object"></span>
 
 Represents the stateful unit of work being processed by the A2A Server for an A2A Client.
 
@@ -821,8 +823,8 @@ Represents the current state and associated context of a Task.
 }
 ```
 
-<span id="63-taskstate-enum"></span>
 #### 4.1.3. TaskState
+<span id="63-taskstate-enum"></span>
 
 Defines the possible lifecycle states of a Task.
 
@@ -1090,9 +1092,8 @@ Represents a tangible output generated by the agent during a task.
 
 ### 4.2. Streaming Events
 
-<span id="4192-taskstatusupdateevent"></span>
-<span id="722-taskstatusupdateevent-object"></span>
 #### 4.2.1. TaskStatusUpdateEvent
+<span id="4192-taskstatusupdateevent"></span><span id="722-taskstatusupdateevent-object"></span>
 
 Carries information about a change in task status during streaming.
 
@@ -1126,9 +1127,8 @@ Carries information about a change in task status during streaming.
 }
 ```
 
-<span id="4193-taskartifactupdateevent"></span>
-<span id="723-taskartifactupdateevent-object"></span>
 #### 4.2.2. TaskArtifactUpdateEvent
+<span id="4193-taskartifactupdateevent"></span><span id="723-taskartifactupdateevent-object"></span>
 
 Carries a new or updated artifact generated during streaming.
 
@@ -1158,7 +1158,7 @@ Carries a new or updated artifact generated during streaming.
 ### 4.3. Push Notification Objects
 
 #### 4.3.1. PushNotificationConfig
-<span id="68-pushnotificationconfig-object"></span>
+<span id="68-pushnotificationconfig-object"></span><span id="431-pushnotificationconfig"></span>
 
 Configuration for setting up push notifications for task updates.
 
@@ -1318,10 +1318,8 @@ For detailed security guidance on push notifications, see [Section 7.7.2 Push No
 
 ### 4.4. Agent Discovery Objects
 
-<span id="441-agentcard"></span>
-<span id="710-agentgetauthenticatedextendedcard"></span>
 #### 4.4.1. AgentCard
-<span id="421-agentcard"></span>
+<span id="710-agentgetauthenticatedextendedcard"></span><span id="421-agentcard"></span>
 
 The primary metadata document describing an agent's capabilities and interface.
 
@@ -1844,17 +1842,17 @@ When an agent supports multiple protocols, all supported protocols **MUST**:
 
 | Functionality                        | JSON-RPC Method                          | gRPC Method                          | REST Endpoint                                        |
 | :----------------------------------- | :--------------------------------------- | :----------------------------------- | :--------------------------------------------------- |
-| Send message                         | `message/send`                           | `SendMessage`                        | `POST /v1/message:send`                              |
-| Stream message                       | `message/stream`                         | `SendStreamingMessage`               | `POST /v1/message:stream`                            |
-| Get task                             | `tasks/get`                              | `GetTask`                            | `GET /v1/tasks/{id}`                                 |
-| List tasks                           | `tasks/list`                             | `ListTasks`                          | `GET /v1/tasks`                                      |
-| Cancel task                          | `tasks/cancel`                           | `CancelTask`                         | `POST /v1/tasks/{id}:cancel`                         |
-| Resubscribe to task                  | `tasks/resubscribe`                      | `TaskResubscription`                 | `POST /v1/tasks/{id}:resubscribe`                    |
-| Set push notification config         | `tasks/pushNotificationConfig/set`       | `SetTaskPushNotificationConfig`      | `POST /v1/tasks/{id}/pushNotificationConfigs`        |
-| Get push notification config         | `tasks/pushNotificationConfig/get`       | `GetTaskPushNotificationConfig`      | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
-| List push notification configs       | `tasks/pushNotificationConfig/list`      | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
-| Delete push notification config      | `tasks/pushNotificationConfig/delete`    | `DeleteTaskPushNotificationConfig`   | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
-| Get extended Agent Card | `agent/getExtendedAgentCard`     | `GetExtendedAgentCard`               | `GET /v1/extendedAgentCard`                          |
+| Send message                         | `SendMessage`                            | `SendMessage`                        | `POST /v1/message:send`                              |
+| Stream message                       | `SendStreamingMessage`                   | `SendStreamingMessage`               | `POST /v1/message:stream`                            |
+| Get task                             | `GetTask`                                | `GetTask`                            | `GET /v1/tasks/{id}`                                 |
+| List tasks                           | `ListTasks`                              | `ListTasks`                          | `GET /v1/tasks`                                      |
+| Cancel task                          | `CancelTask`                             | `CancelTask`                         | `POST /v1/tasks/{id}:cancel`                         |
+| Resubscribe to task                  | `TaskResubscription`                     | `TaskResubscription`                 | `POST /v1/tasks/{id}:resubscribe`                    |
+| Set push notification config         | `SetTaskPushNotificationConfig`          | `SetTaskPushNotificationConfig`      | `POST /v1/tasks/{id}/pushNotificationConfigs`        |
+| Get push notification config         | `GetTaskPushNotificationConfig`          | `GetTaskPushNotificationConfig`      | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
+| List push notification configs       | `ListTaskPushNotificationConfig`         | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
+| Delete push notification config      | `DeleteTaskPushNotificationConfig`       | `DeleteTaskPushNotificationConfig`   | `DELETE /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
+| Get extended Agent Card              | `GetExtendedAgentCard`                   | `GetExtendedAgentCard`               | `GET /v1/extendedAgentCard`                          |
 
 ### 5.4. JSON Field Naming Convention
 
@@ -2482,6 +2480,7 @@ Content-Type: application/a2a+json
     /* Extended skills available to authenticated users */
   ]
 }
+```
 
 ## 7. Authentication and Authorization
 
@@ -2680,6 +2679,7 @@ See also: [Section 3.1.11 Get Extended Agent Card](#3111-get-extended-agent-card
 See also: [Section 12.6 Authentication and Authorization (Custom Bindings)](#126-authentication-and-authorization).
 
 ## 8. Agent Discovery: The Agent Card
+<span id="5-agent-discovery-the-agent-card"></span>
 
 ### 8.1. Purpose
 
@@ -2895,7 +2895,7 @@ The JSON-RPC protocol binding provides a simple, HTTP-based interface using JSON
 
 - **Protocol:** JSON-RPC 2.0 over HTTP(S)
 - **Content-Type:** `application/json` for requests and responses
-- **Method Naming:** `{category}/{action}` pattern (e.g., `message/send`, `tasks/get`)
+- **Method Naming:** PascalCase method names matching gRPC conventions (e.g., `SendMessage`, `GetTask`)
 - **Streaming:** Server-Sent Events (`text/event-stream`)
 
 ### 9.2. Service Parameter Transmission
@@ -2921,7 +2921,7 @@ A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "message/send",
+  "method": "SendMessage",
   "params": { /* SendMessageRequest */ }
 }
 ```
@@ -2941,7 +2941,7 @@ All JSON-RPC requests **MUST** follow the standard JSON-RPC 2.0 format:
 
 ### 9.4. Core Methods
 
-#### 9.4.1. `message/send`
+#### 9.4.1. `SendMessage`
 
 Sends a message to initiate or continue a task.
 
@@ -2950,7 +2950,7 @@ Sends a message to initiate or continue a task.
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "message/send",
+  "method": "SendMessage",
   "params": { /* SendMessageRequest object */ }
 }
 ```
@@ -2968,11 +2968,11 @@ Sends a message to initiate or continue a task.
 
 **Referenced Objects:** [`Task`](#411-task), [`Message`](#414-message)
 
-#### 9.4.2. `message/stream`
+#### 9.4.2. `SendStreamingMessage`
 
 Sends a message and subscribes to real-time updates via Server-Sent Events.
 
-**Request:** Same as `message/send`
+**Request:** Same as `SendMessage`
 
 **Response:** HTTP 200 with `Content-Type: text/event-stream`
 ```
@@ -2983,7 +2983,7 @@ data: {"jsonrpc": "2.0", "id": 1, "result": { /* Task | Message | TaskArtifactUp
 
 Referenced Objects: [`Task`](#411-task), [`Message`](#414-message), [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent), [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent)
 
-#### 9.4.3. `tasks/get`
+#### 9.4.3. `GetTask`
 
 Retrieves the current state of a task.
 
@@ -2992,7 +2992,7 @@ Retrieves the current state of a task.
 {
   "jsonrpc": "2.0",
   "id": 2,
-  "method": "tasks/get",
+  "method": "GetTask",
   "params": {
     "id": "task-uuid",
     "historyLength": 10
@@ -3000,7 +3000,7 @@ Retrieves the current state of a task.
 }
 ```
 
-#### 9.4.4. `tasks/list`
+#### 9.4.4. `ListTasks`
 
 Lists tasks with optional filtering and pagination.
 
@@ -3009,7 +3009,7 @@ Lists tasks with optional filtering and pagination.
 {
   "jsonrpc": "2.0",
   "id": 3,
-  "method": "tasks/list",
+  "method": "ListTasks",
   "params": {
     "contextId": "context-uuid",
     "status": "working",
@@ -3019,7 +3019,7 @@ Lists tasks with optional filtering and pagination.
 }
 ```
 
-#### 9.4.5. `tasks/cancel`
+#### 9.4.5. `CancelTask`
 
 Cancels an ongoing task.
 
@@ -3028,14 +3028,14 @@ Cancels an ongoing task.
 {
   "jsonrpc": "2.0",
   "id": 4,
-  "method": "tasks/cancel",
+  "method": "CancelTask",
   "params": {
     "id": "task-uuid"
   }
 }
 ```
 
-#### 9.4.6. `tasks/resubscribe`
+#### 9.4.6. `TaskResubscription`
 <span id="936-tasksresubscribe"></span>
 
 Reconnects to an SSE stream for an ongoing task.
@@ -3045,23 +3045,23 @@ Reconnects to an SSE stream for an ongoing task.
 {
   "jsonrpc": "2.0",
   "id": 5,
-  "method": "tasks/resubscribe",
+  "method": "TaskResubscription",
   "params": {
     "id": "task-uuid"
   }
 }
 ```
 
-**Response:** SSE stream (same format as `message/stream`)
+**Response:** SSE stream (same format as `SendStreamingMessage`)
 
 #### 9.4.7. Push Notification Configuration Methods
 
-- `tasks/pushNotificationConfig/set` - Set push notification configuration
-- `tasks/pushNotificationConfig/get` - Get push notification configuration
-- `tasks/pushNotificationConfig/list` - List push notification configurations
-- `tasks/pushNotificationConfig/delete` - Delete push notification configuration
+- `SetTaskPushNotificationConfig` - Set push notification configuration
+- `GetTaskPushNotificationConfig` - Get push notification configuration
+- `ListTaskPushNotificationConfig` - List push notification configurations
+- `DeleteTaskPushNotificationConfig` - Delete push notification configuration
 
-#### 9.4.8. `agent/getExtendedAgentCard`
+#### 9.4.8. `GetExtendedAgentCard`
 
 Retrieves an extended Agent Card.
 
@@ -3070,7 +3070,7 @@ Retrieves an extended Agent Card.
 {
   "jsonrpc": "2.0",
   "id": 6,
-  "method": "agent/getExtendedAgentCard"
+  "method": "GetExtendedAgentCard"
 }
 ```
 
