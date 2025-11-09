@@ -490,7 +490,7 @@ message AgentProvider {
 // --8<-- [start:AgentCapabilities]
 // Defines optional capabilities supported by an agent.
 message AgentCapabilities {
-  // Indicates if the agent supports Server-Sent Events (SSE) for streaming responses.
+  // Indicates if the agent supports streaming responses.
   bool streaming = 1;
   // Indicates if the agent supports sending push notifications for asynchronous task updates.
   bool push_notifications = 2;
