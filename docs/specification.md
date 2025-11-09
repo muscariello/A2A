@@ -1862,6 +1862,26 @@ The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/referen
 - When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
 - Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
 
+### 5.5.2. Field Presence and Optionality
+
+The Protocol Buffer definition in `specification/grpc/a2a.proto` uses [`google.api.field_behavior`](https://github.com/googleapis/googleapis/blob/master/google/api/field_behavior.proto) annotations to indicate whether fields are `REQUIRED`. These annotations serve as both documentation and validation hints for implementations.
+
+**Required Fields:**
+
+Fields marked with `[(google.api.field_behavior) = REQUIRED]` indicate that the field **MUST** be present and set in valid messages. Implementations **SHOULD** validate these requirements and reject messages with missing required fields.
+
+**Optional Field Presence:**
+
+The Protocol Buffer `optional` keyword is used to distinguish between a field being explicitly set versus omitted. This distinction is critical for two scenarios:
+
+1. **Explicit Default Values:** Some fields in the specification define default values that differ from Protocol Buffer's implicit defaults (e.g., `protocolVersion` defaults to `"1.0"` rather than empty string, `preferredTransport` defaults to `"JSONRPC"` rather than empty string). The `optional` keyword allows implementations to detect whether a value was explicitly provided or should use the specified default.
+
+2. **Agent Card Canonicalization:** When creating cryptographic signatures of Agent Cards, it is required to produce a canonical JSON representation. The `optional` keyword enables implementations to distinguish between fields that were explicitly set (and should be included in the canonical form) versus fields that were omitted (and should be excluded from canonicalization). This ensures Agent Cards can be reconstructed to accurately match their signature.
+
+### 5.5.3. UUIDs
+
+Fields representing unique identifiers for tasks, messages, artifacts, and other resources **MUST** use UUIDs (Universally Unique Identifiers) formatted in compliance with [RFC 9652](https://datatracker.ietf.org/doc/html/rfc9562).
+
 ### 5.6. Error Code Mappings
 
 All A2A-specific errors defined in [Section 3.3.2](#332-error-handling) **MUST** be mapped to binding-specific error representations. The following table provides the canonical mappings for each standard protocol binding:
