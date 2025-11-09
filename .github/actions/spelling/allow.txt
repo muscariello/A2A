@@ -151,6 +151,7 @@ beeai
 bufbuild
 bzr
 cae
+canceltask
 ccc
 cdn
 ceee
@@ -182,9 +183,11 @@ euo
 evt
 excinfo
 faa
+faf
 fafd
 fdebd
 ffbb
+fff
 firewalls
 flightbook
 forbes

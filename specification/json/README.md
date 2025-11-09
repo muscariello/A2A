@@ -77,9 +77,9 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    git clone https://github.com/googleapis/googleapis.git C:\path\to\googleapis
    $env:GOOGLEAPIS_DIR = "C:\path\to\googleapis"
 
-   # Add to your PowerShell profile to persist:
-   Add-Content $PROFILE '$env:GOOGLEAPIS_DIR = "C:\path\to\googleapis"'
-   ```
+   # To persist this setting, add the following line to your PowerShell profile.
+   # You can open your profile for editing by running: notepad $PROFILE
+   $env:GOOGLEAPIS_DIR = "C:\path\to\googleapis"
 
 7. **Python documentation dependencies**
    ```powershell
