@@ -3853,6 +3853,99 @@ Server Implementations MAY:
 - Accept both legacy and current request message forms during the overlap period.
 - Emit only current form in responses (recommended) while providing explicit upgrade notes.
 
+#### A.2.1 Breaking Change: Kind Discriminator Removed
+
+**Version 1.0 introduces a breaking change** in how polymorphic objects are represented in the protocol. This affects `Part` types and streaming event types.
+
+**Legacy Pattern (v0.3.x):**
+Objects used an inline `kind` field as a discriminator to identify the object type:
+
+**Example 1 - TextPart:**
+```json
+{
+  "kind": "TextPart",
+  "text": "Hello, world!"
+}
+```
+
+**Example 2 - FilePart:**
+```json
+{
+  "kind": "FilePart",
+  "mimeType": "image/png",
+  "name": "diagram.png",
+  "fileWithBytes": "iVBORw0KGgo..."
+}
+```
+
+**Current Pattern (v1.0):**
+Objects now use the **JSON member name** itself to identify the type. The member name acts as the discriminator, and the value structure depends on the specific type:
+
+**Example 1 - TextPart:**
+```json
+{
+  "text": "Hello, world!"
+}
+```
+
+**Example 2 - FilePart:**
+```json
+{
+  "file": {
+    "mimeType": "image/png",
+    "name": "diagram.png",
+    "fileWithBytes": "iVBORw0KGgo..."
+  }
+}
+```
+
+**Affected Types:**
+
+1. **Part Union Types**:
+   - **TextPart**:
+     - **Legacy:** `{ "kind": "TextPart", "text": "..." }`
+     - **Current:** `{ "text": "..." }` (direct string value)
+   - **FilePart**:
+     - **Legacy:** `{ "kind": "FilePart", "mimeType": "...", "name": "...", "fileWithBytes": "..." }`
+     - **Current:** `{ "file": { "mimeType": "...", "name": "...", "fileWithBytes": "..." } }`
+   - **DataPart**:
+     - **Legacy:** `{ "kind": "DataPart", "data": {...} }`
+     - **Current:** `{ "data": { "data": {...} } }`
+
+2. **Streaming Event Types**:
+   - **TaskStatusUpdateEvent**:
+     - **Legacy:** `{ "kind": "TaskStatusUpdateEvent", "taskId": "...", "status": {...} }`
+     - **Current:** `{ "statusUpdate": { "taskId": "...", "status": {...} } }`
+   - **TaskArtifactUpdateEvent**:
+     - **Legacy:** `{ "kind": "TaskArtifactUpdateEvent", "taskId": "...", "artifact": {...} }`
+     - **Current:** `{ "artifactUpdate": { "taskId": "...", "artifact": {...} } }`
+
+**Migration Strategy:**
+
+For **Clients** upgrading from pre-0.3.x:
+
+1. Update parsers to expect wrapper objects with member names as discriminators
+2. When constructing requests, use the new wrapper format
+3. Implement version detection based on the agent's `protocolVersion` in the `AgentCard`
+4. Consider maintaining backward compatibility by detecting and handling both formats during a transition period
+
+For **Servers** upgrading from pre-0.3.x:
+
+1. Update serialization logic to emit wrapper objects
+2. **Breaking:** The `kind` field is no longer part of the protocol and should not be emitted
+3. Update deserialization to expect wrapper objects with member names
+4. Ensure the `AgentCard` declares the correct `protocolVersion` (1.0 or later)
+
+**Rationale:**
+
+This change aligns with modern API design practices and Protocol Buffers' `oneof` semantics, where the field name itself serves as the type discriminator. This approach:
+
+- Reduces redundancy (no need for both a field name and a `kind` value)
+- Aligns JSON-RPC and gRPC representations more closely
+- Simplifies code generation from schema definitions
+- Eliminates the need for representing inheritance structures in schema languages
+- Improves type safety in strongly-typed languages
+
 ### A.3 Future Automation
 
 Once the proto→schema generation pipeline lands, this appendix will be partially auto-generated (legacy mapping table sourced from a maintained manifest). Until then, edits MUST be manual and reviewed in PRs affecting `a2a.proto`.
