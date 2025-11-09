@@ -195,16 +195,6 @@ The primary operation for initiating agent interactions. Clients send a message 
 
 The agent MAY create a new task to process the provided message asynchronously or MAY return a direct message response for simple interactions. The operation MUST return immediately with either task information or response message. Task processing MAY continue asynchronously after the response when a [`Task`](#411-task) is returned.
 
-***Blocking vs Non-Blocking Execution:***
-
-The `blocking` field in [`SendMessageConfiguration`](#SendMessageConfiguration) controls whether the operation waits for task completion:
-
-- **Blocking (`blocking: true`)**: The operation MUST wait until the task reaches a terminal state (completed, failed, cancelled, rejected) before returning. The response MUST include the final task state with all artifacts and status information.
-
-- **Non-Blocking (`blocking: false`)**: The operation MUST return immediately after creating the task, even if processing is still in progress. The returned task will have an in-progress state (e.g., `working`, `input_required`). It is the caller's responsibility to poll for updates using [Get Task](#313-get-task), subscribe via [Resubscribe to Task](#316-resubscribe-to-task), or receive updates via push notifications.
-
-If the `blocking` field is not specified, the default behavior is implementation-defined but SHOULD be non-blocking to support long-running operations without timeout concerns.
-
 #### 3.1.2. Stream Message
 
 Similar to Send Message but with real-time streaming of updates during processing.
@@ -242,7 +232,7 @@ Retrieves the current state (including status, artifacts, and optionally history
 **Inputs:**
 
 - `taskId`: Unique identifier of the task to retrieve
-- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#323-history-length-semantics) for details)
+- `historyLength` (optional): Number of recent messages to include in the task's history (see [History Length Semantics](#324-history-length-semantics) for details)
 
 **Outputs:**
 
@@ -262,10 +252,10 @@ Retrieves a list of tasks with optional filtering and pagination capabilities. T
 - `status` (optional): Filter tasks by their current status state
 - `pageSize` (optional): Maximum number of tasks to return (must be between 1 and 100, defaults to 50)
 - `pageToken` (optional): Token for pagination from a previous response
-- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#323-history-length-semantics) for details, defaults to 0)
+- `historyLength` (optional): Number of recent messages to include in each task's history (see [History Length Semantics](#324-history-length-semantics) for details, defaults to 0)
 - `lastUpdatedAfter` (optional): Filter tasks updated after this timestamp (milliseconds since epoch)
 - `includeArtifacts` (optional): Whether to include artifacts in returned tasks (defaults to false)
-- [`metadata`](#324-metadata) (optional): Request-specific metadata for extensions or custom parameters
+- [`metadata`](#325-metadata) (optional): Request-specific metadata for extensions or custom parameters
 
 When includeArtifacts is false (the default), the artifacts field MUST be omitted entirely from each Task object in the response. The field should not be present as an empty array or null value. When includeArtifacts is true, the artifacts field should be included with its actual content (which may be an empty array if the task has no artifacts).
 
@@ -327,7 +317,7 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 **Outputs:**
 
-- [Stream Response](#322-stream-response) object containing:
+- [Stream Response](#323-stream-response) object containing:
 - Initial response: [`Task`](#411-task) object with current state
 - Stream of [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects
 
@@ -364,7 +354,7 @@ Creates or updates a push notification configuration for a task to receive async
 
 **Behavior:**
 
-The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#322-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
+The operation MUST establish a webhook endpoint for task update notifications. When task updates occur, the agent will send HTTP POST requests to the configured webhook URL with [`StreamResponse`](#323-stream-response) payloads (see [Push Notification Payload](#434-push-notification-payload) for details). This operation is only available if the agent supports push notifications capability. The configuration MUST persist until task completion or explicit deletion.
 
  <span id="tasks-push-notification-config-operations"></span><span id="grpc-push-notification-operations"></span><span id="push-notification-operations"></span>
 
@@ -472,11 +462,52 @@ Request object for sending messages to an agent.
 --8<-- "specification/grpc/a2a.proto:SendMessageRequest"
 ```
 
-#### 3.2.2. Stream Response
+**Fields:**
+
+- **request** (required): The [`Message`](#414-message) object to send to the agent.
+- **configuration** (optional): [`SendMessageConfiguration`](#322-sendmessageconfiguration) object containing options for this request.
+- **metadata** (optional): A flexible key-value map for passing additional context or parameters. See [Metadata](#325-metadata) for details.
+
+#### 3.2.2. SendMessageConfiguration
+
+Configuration options for message sending operations.
+
+```proto
+--8<-- "specification/grpc/a2a.proto:SendMessageConfiguration"
+```
+
+**Fields:**
+
+- **acceptedOutputModes** (optional): A list of media types the client is prepared to accept in the response. Agents SHOULD use this to tailor their output format.
+- **historyLength** (optional): Number of recent messages from the task's history to include in the response. See [History Length Semantics](#324-history-length-semantics) for details.
+- **pushNotificationConfig** (optional): Configuration for the agent to send push notifications for task updates. See [PushNotificationConfig](#431-pushnotificationconfig) for details.
+- **blocking** (optional): If `true`, the operation waits until the task reaches a terminal state before returning. Default is `false`.
+
+**Blocking vs Non-Blocking Execution:**
+
+The `blocking` field in [`SendMessageConfiguration`](#322-sendmessageconfiguration) controls whether the operation waits for task completion:
+
+- **Blocking (`blocking: true`)**: The operation MUST wait until the task reaches a terminal state (completed, failed, cancelled, rejected) before returning. The response MUST include the final task state with all artifacts and status information.
+
+- **Non-Blocking (`blocking: false`)**: The operation MUST return immediately after creating the task, even if processing is still in progress. The returned task will have an in-progress state (e.g., `working`, `input_required`). It is the caller's responsibility to poll for updates using [Get Task](#313-get-task), subscribe via [Resubscribe to Task](#316-resubscribe-to-task), or receive updates via push notifications.
+
+The `blocking` field has no effect:
+
+- when the operation returns a direct [`Message`](#414-message) response instead of a task.
+- for streaming operations, which always return updates in real-time.
+- on configured push notification configurations, which operates independently of blocking mode.
+
+#### 3.2.3. Stream Response
+<span id="323-stream-response"></span>
+<span id="72-messagestream"></span>
 
 A wrapper object used in streaming operations to encapsulate different types of response data.
 
-The Stream Response contains exactly one of the following properties:
+```proto
+--8<-- "specification/grpc/a2a.proto:StreamResponse"
+```
+
+**Fields (exactly one of the following):**
 
 - **task**: A [`Task`](#411-task) object containing the current state of the task
 - **message**: A [`Message`](#414-message) object containing a message in the conversation
@@ -485,13 +516,7 @@ The Stream Response contains exactly one of the following properties:
 
 This wrapper allows streaming endpoints to return different types of updates through a single response stream while maintaining type safety.
 
-<span id="72-messagestream"></span>
-```proto
---8<-- "specification/grpc/a2a.proto:StreamResponse"
-```
-
-
-#### 3.2.3. History Length Semantics
+#### 3.2.4. History Length Semantics
 
 The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
 
@@ -504,11 +529,11 @@ The `historyLength` parameter appears in multiple operations and controls how mu
 - Servers MUST NOT return more history items than requested when a positive limit is specified
 - When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
 
-#### 3.2.4. Metadata
+#### 3.2.5. Metadata
 
 A flexible key-value map for passing additional context or parameters with operations. Metadata keys and are strings and values can be any valid value that can be represented in JSON. [`Extensions`](#46-extensions) can be used to strongly type metadata values for specific use cases.
 
-#### 3.2.5 Service Parameters
+#### 3.2.6 Service Parameters
 
 A key-value map for passing horizontally applicable context or parameters with case-insensitive string keys and case-sensitive string values. The transmission mechanism for these service parameter key-value pairs is defined by the specific protocol binding (e.g., HTTP headers for HTTP-based bindings, gRPC metadata for gRPC bindings). Custom protocol bindings **MUST** specify how service parameters are transmitted in their binding specification.
 
@@ -1177,7 +1202,7 @@ Defines authentication details for push notifications.
 #### 4.3.4. Push Notification Payload
 <span id="434-push-notification-payload"></span>
 
-When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#322-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
+When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#323-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
 
 **Request Format:**
 
@@ -1197,7 +1222,7 @@ Content-Type: application/json
 
 **Payload Structure:**
 
-The webhook payload is a [`StreamResponse`](#322-stream-response) object containing exactly one of the following:
+The webhook payload is a [`StreamResponse`](#323-stream-response) object containing exactly one of the following:
 
 - **task**: A [`Task`](#411-task) object with the current task state
 - **message**: A [`Message`](#414-message) object containing a message response
@@ -2750,7 +2775,7 @@ The JSON-RPC protocol binding provides a simple, HTTP-based interface using JSON
 
 ### 9.2. Service Parameter Transmission
 
-A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using standard HTTP request headers, as JSON-RPC 2.0 operates over HTTP(S).
+A2A service parameters defined in [Section 3.2.6](#326-service-parameters) **MUST** be transmitted using standard HTTP request headers, as JSON-RPC 2.0 operates over HTTP(S).
 
 **Service Parameter Requirements:**
 
@@ -2994,7 +3019,7 @@ The gRPC Protocol Binding provides a high-performance, strongly-typed interface 
 
 ### 10.2. Service Parameter Transmission
 
-A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using gRPC metadata (headers).
+A2A service parameters defined in [Section 3.2.6](#326-service-parameters) **MUST** be transmitted using gRPC metadata (headers).
 
 **Service Parameter Requirements:**
 
@@ -3257,7 +3282,7 @@ The HTTP+JSON protocol binding provides a RESTful interface using standard HTTP 
 
 ### 11.2. Service Parameter Transmission
 
-A2A service parameters defined in [Section 3.2.5](#325-service-parameters) **MUST** be transmitted using standard HTTP request headers.
+A2A service parameters defined in [Section 3.2.6](#326-service-parameters) **MUST** be transmitted using standard HTTP request headers.
 
 **Service Parameter Requirements:**
 
@@ -3442,7 +3467,7 @@ Custom bindings **MUST** provide clear mappings for:
 
 ### 12.3. Service Parameter Transmission
 
-As specified in [Section 3.2.5 (Service Parameters)](#325-service-parameters), custom protocol bindings **MUST** document how service parameters are transmitted. The binding specification **MUST** address:
+As specified in [Section 3.2.6 (Service Parameters)](#326-service-parameters), custom protocol bindings **MUST** document how service parameters are transmitted. The binding specification **MUST** address:
 
 1. **Transmission Mechanism**: The protocol-specific method for transmitting service parameter key-value pairs
 2. **Value Constraints**: Any limitations on service parameter values (e.g., character encoding, size limits)
@@ -3727,7 +3752,7 @@ A2A Protocol Working Group, a2a-protocol@example.org
 
 ### 14.2. HTTP Header Field Registrations
 
-**Note:** The following HTTP headers represent the HTTP-based protocol binding implementation of the abstract A2A service parameters defined in [Section 3.2.5](#325-service-parameters). These registrations are specific to HTTP/HTTPS transports.
+**Note:** The following HTTP headers represent the HTTP-based protocol binding implementation of the abstract A2A service parameters defined in [Section 3.2.6](#326-service-parameters). These registrations are specific to HTTP/HTTPS transports.
 
 #### 14.2.1. A2A-Version Header
 

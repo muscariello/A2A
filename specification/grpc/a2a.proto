@@ -103,7 +103,7 @@ service A2AService {
 
 ///////// Data Model ////////////
 
-// --8<-- [start:MessageSendConfiguration]
+// --8<-- [start:SendMessageConfiguration]
 // Configuration of a send message request.
 message SendMessageConfiguration {
   // The output modes that the agent is expected to respond with.
@@ -115,7 +115,7 @@ message SendMessageConfiguration {
   // If true, the message will be blocking until the task is completed.
   bool blocking = 4;
 }
-// --8<-- [end:MessageSendConfiguration]
+// --8<-- [end:SendMessageConfiguration]
 
 // --8<-- [start:Task]
 // Task is the core unit of action for A2A. It has a current status
