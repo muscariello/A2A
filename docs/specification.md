@@ -1867,7 +1867,7 @@ All JSON serializations of the A2A protocol data model **MUST** use **camelCase*
 
 ** Enum Values:**
 
-- Enum values **MUST** be represented as their string names in JSON, using lower kebab-case after removing any type name prefixes.
+- Enum values **MUST** be represented as their string names in JSON, using lower [kebab-case](https://developer.mozilla.org/en-US/docs/Glossary/Kebab_case) after removing any type name prefixes.
 
 **Examples:**
 
