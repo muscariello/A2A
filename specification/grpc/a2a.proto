@@ -15,27 +15,16 @@ option java_multiple_files = true;
 option java_outer_classname = "A2A";
 option java_package = "com.google.a2a.v1";
 
-// A2AService defines the gRPC version of the A2A protocol. This has a slightly
-// different shape than the JSONRPC version to better conform to AIP-127,
-// where appropriate. The nouns are AgentCard, Message, Task and
-// TaskPushNotificationConfig.
-// - Messages are not a standard resource so there is no get/delete/update/list
-//   interface, only a send and stream custom methods.
-// - Tasks have a get interface and custom cancel and subscribe methods.
-// - TaskPushNotificationConfig are a resource whose parent is a task.
-//   They have get, list and create methods.
-// - AgentCard is a static resource with only a get method.
+// A2AService defines the gRPC version of the A2A protocol.
 service A2AService {
-  // Send a message to the agent. This is a blocking call that will return the
-  // task once it is completed, or a LRO if requested.
+  // Send a message to the agent.
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {
     option (google.api.http) = {
       post: "/v1/message:send"
       body: "*"
     };
   }
-  // SendStreamingMessage is a streaming call that will return a stream of
-  // task update events until the Task is in an interrupted or terminal state.
+  // SendStreamingMessage is a streaming version of SendMessage.
   rpc SendStreamingMessage(SendMessageRequest) returns (stream StreamResponse) {
     option (google.api.http) = {
       post: "/v1/message:stream"
@@ -56,18 +45,14 @@ service A2AService {
       get: "/v1/tasks"
     };
   }
-  // Cancel a task from the agent. If supported one should expect no
-  // more task updates for the task.
+  // Cancel a task.
   rpc CancelTask(CancelTaskRequest) returns (Task) {
     option (google.api.http) = {
       post: "/v1/{name=tasks/*}:cancel"
       body: "*"
     };
   }
-  // TaskSubscription is a streaming call that will return a stream of task
-  // update events. This attaches the stream to an existing in process task.
-  // If the task is complete the stream will return the completed task (like
-  // GetTask) and close the stream.
+  // TaskSubscription is a streaming version of GetTask.
   rpc TaskSubscription(TaskSubscriptionRequest)
       returns (stream StreamResponse) {
     option (google.api.http) = {
@@ -125,14 +110,9 @@ message SendMessageConfiguration {
   repeated string accepted_output_modes = 1;
   // A configuration of a webhook that can be used to receive updates
   PushNotificationConfig push_notification = 2;
-  // The maximum number of messages to include in the history. If unset,
-  // no limit is imposed. If 0, no history should be returned. If greater
-  // than 0, at most that many recent messages should be returned.
+  // The maximum number of messages to include in the history.
   optional int32 history_length = 3;
-  // If true, the message will be blocking until the task is completed. If
-  // false, the message will be non-blocking and the task will be returned
-  // immediately. It is the caller's responsibility to check for any task
-  // updates.
+  // If true, the message will be blocking until the task is completed.
   bool blocking = 4;
 }
 // --8<-- [end:MessageSendConfiguration]
@@ -286,9 +266,7 @@ message Message {
 // --8<-- [end:Message]
 
 // --8<-- [start:Artifact]
-// Artifacts are the container for task completed results. These are similar
-// to Messages but are intended to be the product of a task, as opposed to
-// point-to-point communication.
+// Artifacts represent task outputs.
 message Artifact {
   // Unique identifier (e.g. UUID) for the artifact. It must be at least unique
   // within a task.
@@ -441,18 +419,6 @@ message AgentCard {
   map<string, SecurityScheme> security_schemes = 8;
   // protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
   // Security requirements for contacting the agent.
-  // This list can be seen as an OR of ANDs. Each object in the list describes
-  // one possible set of security requirements that must be present on a
-  // request. This allows specifying, for example, "callers must either use
-  // OAuth OR an API Key AND mTLS."
-  // Example:
-  // security {
-  //   schemes { key: "oauth" value { list: ["read"] } }
-  // }
-  // security {
-  //   schemes { key: "api-key" }
-  //   schemes { key: "mtls" }
-  // }
   repeated Security security = 9;
   // protolint:enable REPEATED_FIELD_NAMES_PLURALIZED
   // The set of interaction modes that the agent supports across all skills.
@@ -464,9 +430,7 @@ message AgentCard {
   // somewhat abstract but represents a more focused set of actions that the
   // agent is highly likely to succeed at.
   repeated AgentSkill skills = 12;
-  // Whether the agent supports providing an extended agent card when
-  // the user is authenticated, i.e. is the card from .well-known
-  // different than the card from GetExtendedAgentCard.
+  // Whether the agent supports providing an extended agent card when authenticated.
   bool supports_authenticated_extended_card = 13;
   // JSON Web Signatures computed for this AgentCard.
   repeated AgentCardSignature signatures = 17;
@@ -505,14 +469,10 @@ message AgentCapabilities {
 // A declaration of a protocol extension supported by an Agent.
 message AgentExtension {
   // The unique URI identifying the extension.
-  // Example: "https://developers.google.com/identity/protocols/oauth2"
   string uri = 1;
   // A human-readable description of how this agent uses the extension.
-  // Example: "Google OAuth 2.0 authentication"
   string description = 2;
-  // If true, the client must understand and comply with the extension's requirements
-  // to interact with the agent.
-  // Example: false
+  // If true, the client must understand and comply with the extension's requirements.
   bool required = 3;
   // Optional, extension-specific configuration parameters.
   google.protobuf.Struct params = 4;
@@ -521,35 +481,23 @@ message AgentExtension {
 
 // --8<-- [start:AgentSkill]
 // Represents a distinct capability or function that an agent can perform.
-// AgentSkill represents a unit of action/solution that the agent can perform.
-// One can think of this as a type of highly reliable solution that an agent
-// can be tasked to provide. Agents have the autonomy to choose how and when
-// to use specific skills, but clients should have confidence that if the
-// skill is defined that unit of action can be reliably performed.
 message AgentSkill {
   // A unique identifier for the agent's skill.
   string id = 1;
   // A human-readable name for the skill.
   string name = 2;
-  // A detailed description of the skill, intended to help clients or users
-  // understand its purpose and functionality.
+  // A detailed description of the skill.
   string description = 3;
   // A set of keywords describing the skill's capabilities.
-  // Example: ["cooking", "customer support", "billing"]
   repeated string tags = 4;
-  // Example prompts or scenarios that this skill can handle. Provides a hint to
-  // the client on how to use the skill.
-  // Example: ["I need a recipe for bread"]
+  // Example prompts or scenarios that this skill can handle.
   repeated string examples = 5;
   // The set of supported input MIME types for this skill, overriding the agent's defaults.
   repeated string input_modes = 6;
   // The set of supported output MIME types for this skill, overriding the agent's defaults.
   repeated string output_modes = 7;
   // protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
-  // Security schemes necessary for the agent to leverage this skill.
-  // As in the overall AgentCard.security, this list represents a logical OR of
-  // security requirement objects. Each object is a set of security schemes
-  // that must be used together (a logical AND).
+  // Security schemes necessary for this skill.
   repeated Security security = 8;
   // protolint:enable REPEATED_FIELD_NAMES_PLURALIZED
 }
@@ -678,16 +626,12 @@ message OAuthFlows {
 // Defines configuration details for the OAuth 2.0 Authorization Code flow.
 message AuthorizationCodeOAuthFlow {
   // The authorization URL to be used for this flow.
-  // This MUST be a URL and use TLS.
   string authorization_url = 1;
   // The token URL to be used for this flow.
-  // This MUST be a URL and use TLS.
   string token_url = 2;
   // The URL to be used for obtaining refresh tokens.
-  // This MUST be a URL and use TLS.
   string refresh_url = 3;
-  // The available scopes for the OAuth2 security scheme. A map between the scope
-  // name and a short description for it.
+  // The available scopes for the OAuth2 security scheme.
   map<string, string> scopes = 4;
 }
 // --8<-- [end:AuthorizationCodeOAuthFlow]
@@ -695,12 +639,11 @@ message AuthorizationCodeOAuthFlow {
 // --8<-- [start:ClientCredentialsOAuthFlow]
 // Defines configuration details for the OAuth 2.0 Client Credentials flow.
 message ClientCredentialsOAuthFlow {
-  // The token URL to be used for this flow. This MUST be a URL and use TLS.
+  // The token URL to be used for this flow.
   string token_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
+  // The URL to be used for obtaining refresh tokens.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the scope
-  // name and a short description for it.
+  // The available scopes for the OAuth2 security scheme.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:ClientCredentialsOAuthFlow]
@@ -708,12 +651,11 @@ message ClientCredentialsOAuthFlow {
 // --8<-- [start:ImplicitOAuthFlow]
 // Defines configuration details for the OAuth 2.0 Implicit flow.
 message ImplicitOAuthFlow {
-  // The authorization URL to be used for this flow. This MUST be a URL and use TLS.
+  // The authorization URL to be used for this flow.
   string authorization_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
+  // The URL to be used for obtaining refresh tokens.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the scope
-  // name and a short description for it.
+  // The available scopes for the OAuth2 security scheme.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:ImplicitOAuthFlow]
@@ -721,12 +663,11 @@ message ImplicitOAuthFlow {
 // --8<-- [start:PasswordOAuthFlow]
 // Defines configuration details for the OAuth 2.0 Resource Owner Password flow.
 message PasswordOAuthFlow {
-  // The token URL to be used for this flow. This MUST be a URL and use TLS.
+  // The token URL to be used for this flow.
   string token_url = 1;
-  // The URL to be used for obtaining refresh tokens. This MUST be a URL and use TLS.
+  // The URL to be used for obtaining refresh tokens.
   string refresh_url = 2;
-  // The available scopes for the OAuth2 security scheme. A map between the scope
-  // name and a short description for it.
+  // The available scopes for the OAuth2 security scheme.
   map<string, string> scopes = 3;
 }
 // --8<-- [end:PasswordOAuthFlow]
@@ -749,9 +690,7 @@ message GetTaskRequest {
   // The resource name of the task.
   // Format: tasks/{task_id}
   string name = 1 [(google.api.field_behavior) = REQUIRED];
-  // The maximum number of messages to include in the history. If unset,
-  // no limit is imposed. If 0, no history should be returned. If greater
-  // than 0, at most that many recent messages should be returned.
+  // The maximum number of messages to include in the history.
   optional int32 history_length = 2;
 }
 // --8<-- [end:GetTaskRequest]
@@ -768,9 +707,7 @@ message ListTasksRequest {
   int32 page_size = 3;
   // Token for pagination. Use the next_page_token from a previous ListTasksResponse.
   string page_token = 4;
-  // The maximum number of messages to include in each task's history. If unset,
-  // no limit is imposed. If 0, no history should be returned. If greater
-  // than 0, at most that many recent messages should be returned.
+  // The maximum number of messages to include in each task's history.
   optional int32 history_length = 5;
   // Filter tasks updated after this timestamp (milliseconds since epoch).
   // Only tasks with a last updated time greater than or equal to this value will be returned.
@@ -845,17 +782,10 @@ message ListTaskPushNotificationConfigRequest {
   // The parent task resource.
   // Format: tasks/{task_id}
   string parent = 1;
-  // For AIP-158 these fields are present. Usually not used/needed.
   // The maximum number of configurations to return.
-  // If unspecified, all configs will be returned.
   int32 page_size = 2;
 
-  // A page token received from a previous
-  // ListTaskPushNotificationConfigRequest call.
-  // Provide this to retrieve the subsequent page.
-  // When paginating, all other parameters provided to
-  // `ListTaskPushNotificationConfigRequest` must match the call that provided
-  // the page token.
+  // A page token received from a previous ListTaskPushNotificationConfigRequest call.
   string page_token = 3;
 }
 // --8<-- [end:ListTaskPushNotificationConfigRequest]
@@ -877,14 +807,7 @@ message SendMessageResponse {
 // --8<-- [end:SendMessageResponse]
 
 // --8<-- [start:StreamResponse]
-// The stream response for a message. The stream should be one of the following sequences:
-// - If the response is a message, the stream should contain one, and only one,
-//   message and then close
-// - If the response is a task lifecycle, the first response should be a Task
-//   object followed by zero or more TaskStatusUpdateEvents and
-//   TaskArtifactUpdateEvents. The stream should complete when the Task
-//   is in an interrupted or terminal state. A stream that ends before these
-//   conditions are met indicates an error.
+// Response message containing task updates or messages.
 message StreamResponse {
   oneof payload {
     Task task = 1;
