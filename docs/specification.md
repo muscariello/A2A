@@ -3296,7 +3296,7 @@ This section provides registration templates for the A2A protocol's media type, 
 
 #### 13.1.1. application/a2a+json
 
-**Type name:** application
+**Type name:** `application`
 
 **Subtype name:** a2a+json
 
