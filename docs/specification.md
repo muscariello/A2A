@@ -3320,7 +3320,7 @@ This media type shares security considerations common to all JSON-based formats 
 The A2A protocol supports multiple protocol bindings. This media type is intended for the HTTP+JSON/REST binding.
 
 **Published specification:**
-Agent2Agent (A2A) Protocol Specification, available at: https://a2a-protocol.org/specification
+Agent2Agent (A2A) Protocol Specification, available at: https://a2a-protocol.org/latest/specification
 
 **Applications that use this media type:**
 AI agent platforms, agentic workflow systems, multi-agent collaboration tools, and enterprise automation systems that implement the A2A protocol for agent-to-agent communication.
