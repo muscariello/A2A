@@ -688,7 +688,7 @@ Real-time capabilities are provided through:
 - **Connection Management**: Proper handling of connection interruption and reconnection
 - **Buffering**: Events may be buffered during connection outages
 
-This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Compliance and Interoperability)](#5-protocol-binding-compliance-and-interoperability).
+This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Binding Requirements and Interoperability)](#5-binding-requirements-and-interoperability).
 
 ### 3.6 Versioning
 
