@@ -120,7 +120,7 @@ This layered approach ensures that:
 
 ### 1.4 Normative Content
 
-In addtion to the protocol requirements defined in this document, the file `specification/grpc/a2a.proto` is the single authoritative normative definition of all protocol data objects and request/response messages. A generated JSON artifact (`specification/json/a2a.json`, produced at build time and not committed) MAY be published for convenience to tooling and the website, but it is a non-normative build artifact. SDK language bindings, schemas, and any other derived forms **MUST** be regenerated from the proto (directly or via code generation) rather than edited manually.
+In addition to the protocol requirements defined in this document, the file `specification/grpc/a2a.proto` is the single authoritative normative definition of all protocol data objects and request/response messages. A generated JSON artifact (`specification/json/a2a.json`, produced at build time and not committed) MAY be published for convenience to tooling and the website, but it is a non-normative build artifact. SDK language bindings, schemas, and any other derived forms **MUST** be regenerated from the proto (directly or via code generation) rather than edited manually.
 
 **Change Control and Deprecation Lifecycle:**
 
@@ -704,7 +704,7 @@ This specification defines three standard protocol bindings: [JSON-RPC Protocol 
 
 ### 3.6 Versioning
 
-The specific version of the A2A protocol in use is identified using the `Major.Minor` elements (e.g. `1.0`) of the corresponding A2A specification version. Patch version numbers do not affect protocol compatibility, SHOULD NOT be included in requests and reponses, and MUST not be considered when clients and servers negotiate protocol versions.
+The specific version of the A2A protocol in use is identified using the `Major.Minor` elements (e.g. `1.0`) of the corresponding A2A specification version. Patch version numbers do not affect protocol compatibility, SHOULD NOT be included in requests and responses, and MUST not be considered when clients and servers negotiate protocol versions.
 
 Agents declare support for latest supported protocol version in the `protocolVersion` field in the Agent Card. Agents MAY also support earlier protocol versions. Clients SHOULD specify the desired protocol version in requests using the `A2A-Version` header. If the requested version is not supported by the agent, the agent MUST return a `VersionNotSupportedError`.
 
