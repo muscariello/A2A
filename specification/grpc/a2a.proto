@@ -177,7 +177,7 @@ message TaskStatus {
   // The current state of this task
   TaskState state = 1 [(google.api.field_behavior) = REQUIRED];
   // A message associated with the status.
-  Message update = 2 [json_name = "message"];
+  Message message = 2;
   // Timestamp when the status was recorded.
   // Example: "2023-10-27T10:00:00Z"
   google.protobuf.Timestamp timestamp = 3;
@@ -209,7 +209,7 @@ message FilePart {
     string file_with_uri = 1;
     bytes file_with_bytes = 2;
   }
-  string mime_type = 3;
+  string media_type = 3;
   string name = 4;
 }
 // --8<-- [end:FilePart]
@@ -422,9 +422,9 @@ message AgentCard {
   repeated Security security = 9;
   // protolint:enable REPEATED_FIELD_NAMES_PLURALIZED
   // The set of interaction modes that the agent supports across all skills.
-  // This can be overridden per skill. Defined as mime types.
+  // This can be overridden per skill. Defined as media types.
   repeated string default_input_modes = 10 [(google.api.field_behavior) = REQUIRED];
-  // The mime types supported as outputs from this agent.
+  // The media types supported as outputs from this agent.
   repeated string default_output_modes = 11 [(google.api.field_behavior) = REQUIRED];
   // Skills represent a unit of ability an agent can perform. This may
   // somewhat abstract but represents a more focused set of actions that the
@@ -492,9 +492,9 @@ message AgentSkill {
   repeated string tags = 4 [(google.api.field_behavior) = REQUIRED];
   // Example prompts or scenarios that this skill can handle.
   repeated string examples = 5;
-  // The set of supported input MIME types for this skill, overriding the agent's defaults.
+  // The set of supported input media types for this skill, overriding the agent's defaults.
   repeated string input_modes = 6;
-  // The set of supported output MIME types for this skill, overriding the agent's defaults.
+  // The set of supported output media types for this skill, overriding the agent's defaults.
   repeated string output_modes = 7;
   // protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
   // Security schemes necessary for this skill.
@@ -727,8 +727,10 @@ message ListTasksResponse {
   repeated Task tasks = 1 [(google.api.field_behavior) = REQUIRED];
   // Token for retrieving the next page. Empty string if no more results.
   string next_page_token = 2 [(google.api.field_behavior) = REQUIRED];
+  // The size of page requested.
+  int32 page_size = 3 [(google.api.field_behavior) = REQUIRED];
   // Total number of tasks available (before pagination).
-  int32 total_size = 3 [(google.api.field_behavior) = REQUIRED];
+  int32 total_size = 4 [(google.api.field_behavior) = REQUIRED];
 }
 // --8<-- [end:ListTasksResponse]
 
