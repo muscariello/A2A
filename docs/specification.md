@@ -306,10 +306,10 @@ Requests the cancellation of an ongoing task. The server will attempt to cancel 
 The operation attempts to cancel the specified task and returns its updated state.
 
 
-#### 3.1.6. Resubscribe to Task
-<span id="79-tasksresubscribe"></span>
+#### 3.1.6. Subscribe to Task
+<span id="79-taskssubscribe"></span>
 
-Establishes a streaming connection to resume receiving updates for a specific task that was originally created by a streaming operation.
+Establishes a streaming connection to receive updates for an existing task.
 
 **Inputs:**
 
@@ -325,13 +325,13 @@ Establishes a streaming connection to resume receiving updates for a specific ta
 
 - [`UnsupportedOperationError`](#332-error-handling): Streaming is not supported by the agent (see [Capability Validation](#334-capability-validation)).
 - [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
-- [`UnsupportedOperationError`](#332-error-handling): The operation is attempted on a task that was not created by a streaming operation.
+- [`UnsupportedOperationError`](#332-error-handling): The operation is attempted on a task that is in a terminal state (`completed`, `failed`, `cancelled`, or `rejected`).
 
 **Behavior:**
 
-The operation enables real-time monitoring of task progress but can only be used with tasks created by `SendStreamingMessage` operations, not `SendMessage`. This operation SHOULD be used for reconnecting to previously created streaming tasks after connection interruption. The stream MUST terminate when the task reaches a final state.
+The operation enables real-time monitoring of task progress and can be used with any task that is not in a terminal state. The stream MUST terminate when the task reaches a terminal state (`completed`, `failed`, `cancelled`, or `rejected`).
 
-The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of resubscription. This prevents a potential loss of information between a call to `GetTask` and calling `ResubscribeToTask`.
+The operation MUST return a `Task` object as the first event in the stream, representing the current state of the task at the time of subscription. This prevents a potential loss of information between a call to `GetTask` and calling `SubscribeToTask`.
 
 #### 3.1.7. Set or Update Push Notification Config
 <span id="75-taskspushnotificationconfigset"></span>
@@ -489,7 +489,7 @@ The `blocking` field in [`SendMessageConfiguration`](#322-sendmessageconfigurati
 
 - **Blocking (`blocking: true`)**: The operation MUST wait until the task reaches a terminal state (completed, failed, cancelled, rejected) before returning. The response MUST include the final task state with all artifacts and status information.
 
-- **Non-Blocking (`blocking: false`)**: The operation MUST return immediately after creating the task, even if processing is still in progress. The returned task will have an in-progress state (e.g., `working`, `input_required`). It is the caller's responsibility to poll for updates using [Get Task](#313-get-task), subscribe via [Resubscribe to Task](#316-resubscribe-to-task), or receive updates via push notifications.
+- **Non-Blocking (`blocking: false`)**: The operation MUST return immediately after creating the task, even if processing is still in progress. The returned task will have an in-progress state (e.g., `working`, `input_required`). It is the caller's responsibility to poll for updates using [Get Task](#313-get-task), subscribe via [Subscribe to Task](#316-subscribe-to-task), or receive updates via push notifications.
 
 The `blocking` field has no effect:
 
@@ -633,7 +633,7 @@ Protocol bindings **MUST** map these elements to their native error representati
 Agents declare optional capabilities in their [`AgentCard`](#441-agentcard). When clients attempt to use operations or features that require capabilities not declared as supported in the Agent Card, the agent **MUST** return an appropriate error response:
 
 - **Push Notifications**: If `AgentCard.capabilities.pushNotifications` is `false` or not present, operations related to push notification configuration (Set, Get, List, Delete) **MUST** return [`PushNotificationNotSupportedError`](#332-error-handling).
-- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `SendStreamingMessage` or `ResubscribeToTask` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
+- **Streaming**: If `AgentCard.capabilities.streaming` is `false` or not present, attempts to use `SendStreamingMessage` or `SubscribeToTask` operations **MUST** return [`UnsupportedOperationError`](#332-error-handling).
 - **Extended Agent Card**: If `AgentCard.supportsAuthenticatedExtendedCard` is `false` or not present, attempts to call the Get Extended Agent Card operation **MUST** return [`UnsupportedOperationError`](#332-error-handling). If the agent declares support but has not configured an extended card, it **MUST** return [`ExtendedAgentCardNotConfiguredError`](#332-error-handling).
 - **Extensions**: When a client requests use of an extension marked as `required: true` in the Agent Card but the client does not declare support for it, the agent **MUST** return [`ExtensionSupportRequiredError`](#332-error-handling).
 
@@ -692,7 +692,7 @@ The A2A protocol supports several patterns for multi-turn interactions:
 
 Real-time capabilities are provided through:
 
-- **Streaming Operations**: Stream Message (Section 3.1.2) and Resubscribe to Task (Section 3.1.6)
+- **Streaming Operations**: Stream Message (Section 3.1.2) and Subscribe to Task (Section 3.1.6)
 - **Event Types**: TaskStatusUpdateEvent (Section 4.2.1) and TaskArtifactUpdateEvent (Section 4.2.2)
 - **Push Notifications**: WebHook-based push notifications (Section 3.1.7 through 3.1.10 and Section 4.3) for asynchronous task updates. Regardless of the protocol binding being used by the agent, WebHook calls use plain HTTP and the JSON payloads as defined in the HTTP protocol binding.
 
@@ -1361,7 +1361,7 @@ When an agent supports multiple protocols, all supported protocols **MUST**:
 | Get task                             | `GetTask`                                | `GetTask`                            | `GET /v1/tasks/{id}`                                 |
 | List tasks                           | `ListTasks`                              | `ListTasks`                          | `GET /v1/tasks`                                      |
 | Cancel task                          | `CancelTask`                             | `CancelTask`                         | `POST /v1/tasks/{id}:cancel`                         |
-| Resubscribe to task                  | `ResubscribeToTask`                      | `ResubscribeToTask`                  | `POST /v1/tasks/{id}:resubscribe`                    |
+| Subscribe to task                    | `SubscribeToTask`                        | `SubscribeToTask`                    | `POST /v1/tasks/{id}:subscribe`                      |
 | Set push notification config         | `SetTaskPushNotificationConfig`          | `SetTaskPushNotificationConfig`      | `POST /v1/tasks/{id}/pushNotificationConfigs`        |
 | Get push notification config         | `GetTaskPushNotificationConfig`          | `GetTaskPushNotificationConfig`      | `GET /v1/tasks/{id}/pushNotificationConfigs/{configId}` |
 | List push notification configs       | `ListTaskPushNotificationConfig`         | `ListTaskPushNotificationConfig`     | `GET /v1/tasks/{id}/pushNotificationConfigs`         |
@@ -2488,17 +2488,17 @@ Cancels an ongoing task.
 }
 ```
 
-#### 9.4.6. `ResubscribeToTask`
-<span id="936-tasksresubscribe"></span>
+#### 9.4.6. `SubscribeToTask`
+<span id="936-taskssubscribe"></span>
 
-Reconnects to an SSE stream for an ongoing task.
+Subscribes to a task stream for receiving updates on a task that is not in a terminal state.
 
 **Request:**
 ```json
 {
   "jsonrpc": "2.0",
   "id": 5,
-  "method": "ResubscribeToTask",
+  "method": "SubscribeToTask",
   "params": {
     "id": "task-uuid"
   }
@@ -2506,6 +2506,8 @@ Reconnects to an SSE stream for an ongoing task.
 ```
 
 **Response:** SSE stream (same format as `SendStreamingMessage`)
+
+**Error:** Returns `UnsupportedOperationError` if the task is in a terminal state (`completed`, `failed`, `cancelled`, or `rejected`).
 
 #### 9.4.7. Push Notification Configuration Methods
 
@@ -2635,7 +2637,7 @@ service A2AService {
   rpc GetTask(GetTaskRequest) returns (Task);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc CancelTask(CancelTaskRequest) returns (Task);
-  rpc ResubscribeToTask(ResubscribeToTaskRequest) returns (stream StreamResponse);
+  rpc SubscribeToTask(SubscribeToTaskRequest) returns (stream StreamResponse);
   rpc SetTaskPushNotificationConfig(SetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc GetTaskPushNotificationConfig(GetTaskPushNotificationConfigRequest) returns (TaskPushNotificationConfig);
   rpc ListTaskPushNotificationConfig(ListTaskPushNotificationConfigRequest) returns (ListTaskPushNotificationConfigResponse);
@@ -2707,13 +2709,13 @@ Cancels a running task.
 
 **Response:** See [`Task`](#411-task) object definition.
 
-#### 10.4.6. ResubscribeToTask
+#### 10.4.6. SubscribeToTask
 
-Resubscribe to task updates via streaming.
+Subscribe to task updates via streaming. Returns `UnsupportedOperationError` if the task is in a terminal state.
 
 **Request:**
 ```proto
---8<-- "specification/grpc/a2a.proto:ResubscribeToTaskRequest"
+--8<-- "specification/grpc/a2a.proto:SubscribeToTaskRequest"
 ```
 
 **Response:** Server streaming [`StreamResponse`](#stream-response) objects.
@@ -2913,7 +2915,7 @@ A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.
 - `GET /v1/tasks/{id}` - Get task status
 - `GET /v1/tasks` - List tasks (with query parameters)
 - `POST /v1/tasks/{id}:cancel` - Cancel task
-- `POST /v1/tasks/{id}:resubscribe` - Resubscribe to task updates (SSE response, streaming tasks only)
+- `POST /v1/tasks/{id}:subscribe` - Subscribe to task updates (SSE response, returns error for terminal tasks)
 
 #### 11.3.3. Push Notification Configuration
 
@@ -3158,7 +3160,7 @@ Implementations **MUST** ensure appropriate scope limitation based on the authen
 
 - [`List Tasks`](#314-list-tasks): **MUST** only return tasks visible to the authenticated client according to the agent's authorization model
 - [`Get Task`](#313-get-task): **MUST** verify the authenticated client has access to the requested task according to the agent's authorization model
-- Task-related operations (Cancel, Resubscribe, Push Notification Config): **MUST** verify the client has appropriate access rights according to the agent's authorization model
+- Task-related operations (Cancel, Subscribe, Push Notification Config): **MUST** verify the client has appropriate access rights according to the agent's authorization model
 
 **Implementation Requirements:**
 

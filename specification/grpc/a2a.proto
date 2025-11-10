@@ -52,11 +52,12 @@ service A2AService {
       body: "*"
     };
   }
-  // ResubscribeToTask is a streaming version of GetTask.
-  rpc ResubscribeToTask(ResubscribeToTaskRequest)
+  // SubscribeToTask allows subscribing to task updates for tasks not in terminal state.
+  // Returns UnsupportedOperationError if task is in terminal state (completed, failed, cancelled, rejected).
+  rpc SubscribeToTask(SubscribeToTaskRequest)
       returns (stream StreamResponse) {
     option (google.api.http) = {
-      get: "/v1/{name=tasks/*}:resubscribe"
+      get: "/v1/{name=tasks/*}:subscribe"
     };
   }
 
@@ -771,13 +772,13 @@ message SetTaskPushNotificationConfigRequest {
 }
 // --8<-- [end:SetTaskPushNotificationConfigRequest]
 
-// --8<-- [start:ResubscribeToTaskRequest]
-message ResubscribeToTaskRequest {
+// --8<-- [start:SubscribeToTaskRequest]
+message SubscribeToTaskRequest {
   // The resource name of the task to subscribe to.
   // Format: tasks/{task_id}
   string name = 1;
 }
-// --8<-- [end:ResubscribeToTaskRequest]
+// --8<-- [end:SubscribeToTaskRequest]
 
 // --8<-- [start:ListTaskPushNotificationConfigRequest]
 message ListTaskPushNotificationConfigRequest {
