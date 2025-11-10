@@ -2144,12 +2144,14 @@ Before signing, the Agent Card content **MUST** be canonicalized using the JSON 
    - Consistent representation of numbers, strings, and other primitive values
    - Removal of insignificant whitespace
 
-2. **Default Value Omission**: Before canonicalization, all properties with default values **MUST** be omitted from the JSON object. This includes:
-   - Properties set to their default values as defined in the Protocol Buffer schema
-   - Empty arrays (`[]`)
-   - Empty strings (`""`)
-   - Properties with `null` values
-   - Optional properties that are not explicitly set
+2. **Field Presence and Default Value Handling**: Before canonicalization, the JSON representation **MUST** respect Protocol Buffer field presence semantics as defined in [Section 5.6.2](#562-field-presence-and-optionality):
+
+   - **Optional fields not explicitly set**: Fields marked with the `optional` keyword that were not explicitly set **MUST** be omitted from the JSON object
+   - **Optional fields explicitly set to defaults**: Fields marked with `optional` that were explicitly set to a value (even if that value matches a default) **MUST** be included in the JSON object
+   - **Required fields**: Fields marked with `REQUIRED` **MUST** always be present, even if the field value matches the default.
+   - **Default values**: Fields with default values **MUST** be omitted unless the field is marked as `REQUIRED` or has the `optional` keyword.
+
+   This ensures that the canonical form accurately reflects which fields were explicitly provided versus which were omitted, enabling signature verification when Agent Cards are reconstructed.
 
 3. **Signature Field Exclusion**: The `signatures` field itself **MUST** be excluded from the content being signed to avoid circular dependencies.
 
@@ -2165,16 +2167,22 @@ Original Agent Card fragment:
     "pushNotifications": false,
     "extensions": []
   },
-  "skills": []  // It is not currently clear is skills is optional or required
+  "skills": []
 }
 ```
 
-After removing default/empty values:
+Applying the canonicalization rules:
+- `name`: "Example Agent" - REQUIRED field → **include**
+- `description`: "" - REQUIRED field → **include**
+- `capabilities`: object - REQUIRED field → **include** (after processing children)
+  - `streaming`: false - optional field, present in JSON (explicitly set) → **include**
+  - `pushNotifications`: false - optional field, present in JSON (explicitly set) → **include**
+  - `extensions`: [] - repeated field (not REQUIRED) with empty array → **omit**
+- `skills`: [] - REQUIRED field → **include**
+
+After applying RFC 8785:
 ```json
-{
-  "name": "Example Agent",
-  "capabilities": {}
-}
+{"capabilities":{"pushNotifications":false,"streaming":false},"description":"","name":"Example Agent","skills":[]}
 ```
 
 #### 8.4.2. Signature Format
