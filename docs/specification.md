@@ -2139,19 +2139,16 @@ Before signing, the Agent Card content **MUST** be canonicalized using the JSON 
 
 **Canonicalization Rules:**
 
-1. **RFC 8785 Compliance**: The Agent Card JSON **MUST** be canonicalized according to RFC 8785, which specifies:
-   - Predictable ordering of object properties (lexicographic by key)
-   - Consistent representation of numbers, strings, and other primitive values
-   - Removal of insignificant whitespace
+1. **Field Presence and Default Value Handling**: Before canonicalization, the JSON representation **MUST** respect Protocol Buffer field presence semantics as defined in [Section 5.6.2](#562-field-presence-and-optionality). This ensures that the canonical form accurately reflects which fields were explicitly provided versus which were omitted, enabling signature verification when Agent Cards are reconstructed:
+    - **Optional fields not explicitly set**: Fields marked with the `optional` keyword that were not explicitly set **MUST** be omitted from the JSON object
+    - **Optional fields explicitly set to defaults**: Fields marked with `optional` that were explicitly set to a value (even if that value matches a default) **MUST** be included in the JSON object
+    - **Required fields**: Fields marked with `REQUIRED` **MUST** always be present, even if the field value matches the default.
+    - **Default values**: Fields with default values **MUST** be omitted unless the field is marked as `REQUIRED` or has the `optional` keyword.
 
-2. **Field Presence and Default Value Handling**: Before canonicalization, the JSON representation **MUST** respect Protocol Buffer field presence semantics as defined in [Section 5.6.2](#562-field-presence-and-optionality):
-
-   - **Optional fields not explicitly set**: Fields marked with the `optional` keyword that were not explicitly set **MUST** be omitted from the JSON object
-   - **Optional fields explicitly set to defaults**: Fields marked with `optional` that were explicitly set to a value (even if that value matches a default) **MUST** be included in the JSON object
-   - **Required fields**: Fields marked with `REQUIRED` **MUST** always be present, even if the field value matches the default.
-   - **Default values**: Fields with default values **MUST** be omitted unless the field is marked as `REQUIRED` or has the `optional` keyword.
-
-   This ensures that the canonical form accurately reflects which fields were explicitly provided versus which were omitted, enabling signature verification when Agent Cards are reconstructed.
+2. **RFC 8785 Compliance**: The Agent Card JSON **MUST** be canonicalized according to RFC 8785, which specifies:
+    - Predictable ordering of object properties (lexicographic by key)
+    - Consistent representation of numbers, strings, and other primitive values
+    - Removal of insignificant whitespace
 
 3. **Signature Field Exclusion**: The `signatures` field itself **MUST** be excluded from the content being signed to avoid circular dependencies.
 
@@ -2172,12 +2169,13 @@ Original Agent Card fragment:
 ```
 
 Applying the canonicalization rules:
+
 - `name`: "Example Agent" - REQUIRED field → **include**
 - `description`: "" - REQUIRED field → **include**
 - `capabilities`: object - REQUIRED field → **include** (after processing children)
-  - `streaming`: false - optional field, present in JSON (explicitly set) → **include**
-  - `pushNotifications`: false - optional field, present in JSON (explicitly set) → **include**
-  - `extensions`: [] - repeated field (not REQUIRED) with empty array → **omit**
+    - `streaming`: false - optional field, present in JSON (explicitly set) → **include**
+    - `pushNotifications`: false - optional field, present in JSON (explicitly set) → **include**
+    - `extensions`: [] - repeated field (not REQUIRED) with empty array → **omit**
 - `skills`: [] - REQUIRED field → **include**
 
 After applying RFC 8785:
@@ -2187,23 +2185,61 @@ After applying RFC 8785:
 
 #### 8.4.2. Signature Format
 
-Signatures **MUST** use the JWS Compact Serialization or JWS JSON Serialization format. The [`AgentCardSignature`](#447-agentcardsignature) object contains the signature components.
+Signatures use the JSON Web Signature (JWS) format as defined in [RFC 7515](https://tools.ietf.org/html/rfc7515). The [`AgentCardSignature`](#447-agentcardsignature) object represents JWS components using three fields:
 
-**Required JWS Header Parameters:**
+- **protected** (required, string): Base64url-encoded JSON object containing the JWS Protected Header
+- **signature** (required, string): Base64url-encoded signature value
+- **header** (optional, object): JWS Unprotected Header as a JSON object (not base64url-encoded)
+
+**JWS Protected Header Parameters:**
+
+The protected header **MUST** include:
 
 - `alg`: Algorithm used for signing (e.g., "ES256", "RS256")
 - `typ`: **SHOULD** be set to "JOSE" for JWS
 - `kid`: Key ID for identifying the signing key
-- `jku` (optional): URL to JSON Web Key Set (JWKS) containing the public key
 
-**Example Signature Generation Process:**
+The protected header **MAY** include:
 
-1. Remove properties with default values from the Agent Card
-2. Exclude the `signatures` field
-3. Canonicalize the resulting JSON using RFC 8785
-4. Create JWS protected header with `alg`, `typ`, `kid`, and optionally `jku`
-5. Sign the canonicalized payload using the private key
-6. Encode the signature components
+- `jku`: URL to JSON Web Key Set (JWKS) containing the public key
+
+**Signature Generation Process:**
+
+1. **Prepare the payload:**
+    - Remove properties with default values from the Agent Card
+    - Exclude the `signatures` field
+    - Canonicalize the resulting JSON using RFC 8785 to produce the canonical payload
+
+2. **Create the protected header:**
+    - Construct a JSON object with the required header parameters (`alg`, `typ`, `kid`) and any optional parameters (`jku`)
+    - Serialize the header to JSON
+    - Base64url-encode the serialized header to produce the `protected` field value
+
+3. **Compute the signature:**
+    - Construct the JWS Signing Input: `ASCII(BASE64URL(UTF8(JWS Protected Header)) || '.' || BASE64URL(JWS Payload))`
+    - Sign the JWS Signing Input using the algorithm specified in the `alg` header parameter and the private key
+    - Base64url-encode the resulting signature bytes to produce the `signature` field value
+
+4. **Assemble the AgentCardSignature:**
+    - Set `protected` to the base64url-encoded protected header from step 2
+    - Set `signature` to the base64url-encoded signature value from step 3
+    - Optionally set `header` to a JSON object containing any unprotected header parameters.
+
+**Example:**
+
+Given a canonical Agent Card payload and signing key, the signature generation produces:
+
+```json
+{
+  "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiJrZXktMSIsImprdSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vYWdlbnQvandrcy5qc29uIn0",
+  "signature": "QFdkNLNszlGj3z3u0YQGt_T9LixY3qtdQpZmsTdDHDe3fXV9y9-B3m2-XgCpzuhiLt8E0tV6HXoZKHv4GtHgKQ"
+}
+```
+
+Where the `protected` value decodes to:
+```json
+{"alg":"ES256","typ":"JOSE","kid":"key-1","jku":"https://example.com/agent/jwks.json"}
+```
 
 #### 8.4.3. Signature Verification
 
