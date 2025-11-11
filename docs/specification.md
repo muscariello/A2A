@@ -2969,13 +2969,47 @@ Content-Type: application/json
 
 **Referenced Objects:** [`Task`](#411-task)
 
-### 11.5. Query Parameters
+### 11.5. Query Parameter Naming for Request Parameters
 
-For GET operations, use query parameters for filtering and pagination:
+HTTP methods that do not support request bodies (GET, DELETE) **MUST** transmit operation request parameters as path parameters or query parameters. This section defines how to map Protocol Buffer field names to query parameter names.
 
+**Naming Convention:**
+
+Query parameter names **MUST** use `camelCase` to match the JSON serialization of Protocol Buffer field names. This ensures consistency with request bodies used in POST operations.
+
+**Example Mappings:**
+
+| Protocol Buffer Field | Query Parameter Name | Example Usage |
+|----------------------|---------------------|---------------|
+| `context_id` | `contextId` | `?contextId=uuid` |
+| `page_size` | `pageSize` | `?pageSize=50` |
+| `page_token` | `pageToken` | `?pageToken=cursor` |
+| `task_id` | `taskId` | `?taskId=uuid` |
+
+**Usage Examples:**
+
+List tasks with filtering:
 ```http
 GET /v1/tasks?contextId=uuid&status=working&pageSize=50&pageToken=cursor
 ```
+
+Get task with history:
+```http
+GET /v1/tasks/{id}?historyLength=10
+```
+
+**Field Type Handling:**
+
+- **Strings**: Passed directly as query parameter values
+- **Booleans**: Represented as lowercase strings (`true`, `false`)
+- **Numbers**: Represented as decimal strings
+- **Enums**: Represented using their string values (e.g., `status=working`)
+- **Repeated Fields**: Multiple values **MAY** be passed by repeating the parameter name (e.g., `?tag=value1&tag=value2`) or as comma-separated values (e.g., `?tag=value1,value2`)
+- **Nested Objects**: Not supported in query parameters; operations requiring nested objects **MUST** use POST with a request body
+
+**URL Encoding:**
+
+All query parameter values **MUST** be properly URL-encoded per [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986.html).
 
 ### 11.6. Error Handling
 
