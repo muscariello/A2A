@@ -1001,9 +1001,7 @@ The primary metadata document describing an agent's capabilities and interface.
 - **`protocolVersion`** (required, string): The version of the A2A protocol this agent supports (e.g., "1.0"). Defaults to "1.0".
 - **`name`** (required, string): A human readable name for the agent.
 - **`description`** (required, string): A human-readable description of the agent, assisting users and other agents in understanding its purpose.
-- **`url`** (required, string): The preferred endpoint URL for interacting with the agent. This URL MUST support the protocol binding specified by `preferredTransport`.
-- **`preferredTransport`** (optional, string): The protocol binding for the preferred endpoint. Defaults to "JSONRPC". Examples: "JSONRPC", "GRPC", "HTTP+JSON".
-- **`additionalInterfaces`** (optional, array of [`AgentInterface`](#446-agentinterface)): A list of additional supported interfaces (transport and URL combinations).
+- **`supportedInterfaces`** (optional, array of [`AgentInterface`](#446-agentinterface)): An ordered list of supported interfaces (protocol binding and URL combinations). The first item in the list is the preferred interface that clients should use when possible. Clients can select any interface from this list based on their preferences, but SHOULD prefer earlier entries when multiple options are supported.
 - **`provider`** (optional, [`AgentProvider`](#442-agentprovider)): The service provider of the agent.
 - **`version`** (required, string): The version of the agent (e.g., "1.0.0").
 - **`documentationUrl`** (optional, string): A URL to provide additional documentation about the agent.
@@ -1090,7 +1088,7 @@ Declares additional protocols supported by the agent.
 **Fields:**
 
 - **`url`** (required, string): The URL where this interface is available. Must be a valid absolute HTTPS URL in production.
-- **`transport`** (required, string): The protocol binding supported at this URL. Examples: "JSONRPC", "GRPC", "HTTP+JSON".
+- **`protocolBinding`** (required, string): The protocol binding supported at this URL. Examples: "JSONRPC", "GRPC", "HTTP+JSON".
 
 #### 4.4.7. AgentCardSignature
 
@@ -1207,8 +1205,12 @@ Agents declare their supported extensions in the [`AgentCard`](#441-agentcard) u
   "protocolVersion": "0.3.0",
   "name": "Research Assistant Agent",
   "description": "AI agent for academic research and fact-checking",
-  "url": "https://research-agent.example.com/a2a/v1",
-  "preferredTransport": "HTTP+JSON",
+  "supportedInterfaces": [
+    {
+      "url": "https://research-agent.example.com/a2a/v1",
+      "protocolBinding": "HTTP+JSON"
+    }
+  ],
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -1442,25 +1444,25 @@ The A2A protocol uses [`google.protobuf.Timestamp`](https://protobuf.dev/referen
 - When millisecond precision is not available, the fractional seconds portion **MAY** be omitted or zero-filled
 - Timestamps **MUST NOT** include timezone offsets other than 'Z' (all times are UTC)
 
-#### 5.6.2. Field Presence and Optionality
+### 5.7. Field Presence and Optionality
 
 The Protocol Buffer definition in `specification/grpc/a2a.proto` uses [`google.api.field_behavior`](https://github.com/googleapis/googleapis/blob/master/google/api/field_behavior.proto) annotations to indicate whether fields are `REQUIRED`. These annotations serve as both documentation and validation hints for implementations.
 
 **Required Fields:**
 
-Fields marked with `[(google.api.field_behavior) = REQUIRED]` indicate that the field **MUST** be present and set in valid messages. Implementations **SHOULD** validate these requirements and reject messages with missing required fields.
+Fields marked with `[(google.api.field_behavior) = REQUIRED]` indicate that the field **MUST** be present and set in valid messages. Implementations **SHOULD** validate these requirements and reject messages with missing required fields. Arrays marked as required **MUST** contain at least one element.
 
 **Optional Field Presence:**
 
 The Protocol Buffer `optional` keyword is used to distinguish between a field being explicitly set versus omitted. This distinction is critical for two scenarios:
 
-1. **Explicit Default Values:** Some fields in the specification define default values that differ from Protocol Buffer's implicit defaults (e.g., `protocolVersion` defaults to `"1.0"` rather than empty string, `preferredTransport` defaults to `"JSONRPC"` rather than empty string). The `optional` keyword allows implementations to detect whether a value was explicitly provided or should use the specified default.
+1. **Explicit Default Values:** Some fields in the specification define default values that differ from Protocol Buffer's implicit defaults (e.g., `protocolVersion` defaults to `"1.0"` rather than empty string). The `optional` keyword allows implementations to detect whether a value was explicitly provided or should use the specified default.
 
 2. **Agent Card Canonicalization:** When creating cryptographic signatures of Agent Cards, it is required to produce a canonical JSON representation. The `optional` keyword enables implementations to distinguish between fields that were explicitly set (and should be included in the canonical form) versus fields that were omitted (and should be excluded from canonicalization). This ensures Agent Cards can be reconstructed to accurately match their signature.
 
-#### 5.6.3. UUIDs
+**Unrecognized Fields:**
 
-Fields representing unique identifiers for tasks, messages, artifacts, and other resources **MUST** use UUIDs (Universally Unique Identifiers) formatted in compliance with [RFC 9652](https://datatracker.ietf.org/doc/html/rfc9562).
+Implementations **SHOULD** ignore unrecognized fields in messages, allowing for forward compatibility as the protocol evolves.
 
 ## 6. Common Workflows & Examples
 
@@ -2104,26 +2106,29 @@ Clients can find Agent Cards through:
 
 The AgentCard **MUST** properly declare supported protocols:
 
-#### 8.3.1. Primary Interface Declaration
+#### 8.3.1. Supported Interfaces Declaration
 
-- The `url` field **MUST** specify the primary endpoint
-- The `preferred_transport` field **MUST** match the binding available at the primary URL
-- The primary URL **MUST** support the declared preferred binding
+- The `supportedInterfaces` field **SHOULD** declare all supported protocol combinations in preference order
+- The first entry in `supportedInterfaces` represents the preferred interface
+- Each interface **MUST** accurately declare its transport protocol and URL
+- URLs **MAY** be reused if multiple transports are available at the same endpoint
 
-#### 8.3.2. Additional Interfaces
+**Backward Compatibility:**
 
-- `additional_interfaces` **SHOULD** declare all supported protocol combinations
-- Each interface **MUST** accurately declare its protocol binding
-- URLs **MAY** be reused if multiple protocols are available at the same endpoint
+For backward compatibility, agents **MAY** continue to populate the deprecated fields (`url`, `preferredTransport`, `additionalInterfaces`) alongside `supportedInterfaces`:
 
-#### 8.3.3. Client Protocol Selection
+- The `url` field **SHOULD** match the URL of the first entry in `supportedInterfaces`
+- The `preferredTransport` field **SHOULD** match the transport of the first entry in `supportedInterfaces`
+- The `additionalInterfaces` field **SHOULD** contain all entries from `supportedInterfaces`
+
+#### 8.3.2. Client Protocol Selection
 
 Clients **MUST** follow these rules:
 
-1. Parse available protocols from the AgentCard
-2. Prefer the `preferred_transport` if supported
-3. Fall back to any supported protocol from `additional_interfaces`
-4. Use the correct URL for the selected protocol
+1. **Modern Clients**: Parse `supportedInterfaces` if present, and select the first supported transport
+2. **Legacy Clients**: Parse `url`/`preferredTransport` and `additionalInterfaces` for backward compatibility
+3. Prefer earlier entries in the ordered list when multiple options are supported
+4. Use the correct URL for the selected transport
 
 ### 8.4. Agent Card Signing
 
@@ -2263,12 +2268,10 @@ Clients verifying Agent Card signatures **MUST**:
   "protocolVersion": "0.3.0",
   "name": "GeoSpatial Route Planner Agent",
   "description": "Provides advanced route planning, traffic analysis, and custom map generation services. This agent can calculate optimal routes, estimate travel times considering real-time traffic, and create personalized maps with points of interest.",
-  "url": "https://georoute-agent.example.com/a2a/v1",
-  "preferredTransport": "JSONRPC",
-  "additionalInterfaces" : [
-    {"url": "https://georoute-agent.example.com/a2a/v1", "transport": "JSONRPC"},
-    {"url": "https://georoute-agent.example.com/a2a/grpc", "transport": "GRPC"},
-    {"url": "https://georoute-agent.example.com/a2a/json", "transport": "HTTP+JSON"}
+  "supportedInterfaces": [
+    {"url": "https://georoute-agent.example.com/a2a/v1", "protocolBinding": "JSONRPC"},
+    {"url": "https://georoute-agent.example.com/a2a/grpc", "protocolBinding": "GRPC"},
+    {"url": "https://georoute-agent.example.com/a2a/json", "protocolBinding": "HTTP+JSON"}
   ],
   "provider": {
     "organization": "Example Geo Services Inc.",
@@ -3144,12 +3147,10 @@ Custom bindings **MUST** be declared in the Agent Card:
 **Example:**
 ```json
 {
-  "url": "wss://agent.example.com/a2a/websocket",
-  "preferredTransport": "WEBSOCKET",
-  "additionalInterfaces": [
+  "supportedInterfaces": [
     {
       "url": "wss://agent.example.com/a2a/websocket",
-      "transport": "WEBSOCKET"
+      "protocolBinding": "WEBSOCKET"
     }
   ]
 }

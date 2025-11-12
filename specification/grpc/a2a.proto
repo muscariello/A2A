@@ -356,7 +356,7 @@ message AgentInterface {
   // easily extended for other protocol bindings. The core ones officially
   // supported are JSONRPC, GRPC and HTTP+JSON.
   // Example: "JSONRPC", "GRPC", "HTTP+JSON"
-  string transport = 2 [(google.api.field_behavior) = REQUIRED];
+  string protocol_binding = 2 [(google.api.field_behavior) = REQUIRED];
 }
 // --8<-- [end:AgentInterface]
 
@@ -369,7 +369,7 @@ message AgentInterface {
 // - Skills; a set of actions/solutions the agent can perform
 // - Default modalities/content types supported by the agent.
 // - Authentication requirements
-// Next ID: 19
+// Next ID: 20
 message AgentCard {
   // The version of the A2A protocol this agent supports.
   // Default: "1.0"
@@ -381,32 +381,14 @@ message AgentCard {
   // in understanding its purpose.
   // Example: "Agent that helps users with recipes and cooking."
   string description = 2 [(google.api.field_behavior) = REQUIRED];
-  // The preferred endpoint URL for interacting with the agent.
-  // This URL MUST support the protocol binding specified by 'preferred_transport'.
-  // Example: "https://api.example.com/a2a/v1"
-  string url = 3 [(google.api.field_behavior) = REQUIRED];
-  // The protocol binding for the preferred endpoint (the main 'url' field).
-  // If not specified, defaults to 'JSONRPC'.
-  //
-  // IMPORTANT: The transport specified here MUST be available at the main 'url'.
-  // This creates a binding between the main URL and its supported transport protocol.
-  // Clients should prefer this transport and URL combination when both are supported.
-  //
-  // Default: "JSONRPC"
-  // Example: "JSONRPC", "GRPC", "HTTP+JSON"
-  optional string preferred_transport = 14;
-  // A list of additional supported interfaces (transport and URL combinations).
-  // This allows agents to expose multiple protocol bindings, potentially at different URLs.
-  //
-  // Best practices:
-  // - SHOULD include all supported protocol bindings for completeness
-  // - SHOULD include an entry matching the main 'url' and 'preferred_transport'
-  // - MAY reuse URLs if multiple protocol bindings are available at the same endpoint
-  // - MUST accurately declare the protocol bindings available at each URL
-  //
-  // Clients can select any interface from this list based on their transport capabilities
-  // and preferences. This enables transport negotiation and fallback scenarios.
-  repeated AgentInterface additional_interfaces = 15;
+  // Ordered list of supported interfaces. First entry is preferred.
+  repeated AgentInterface supported_interfaces = 19;
+  // DEPRECATED: Use 'supported_interfaces' instead.
+  optional string url = 3 [deprecated = true];
+  // DEPRECATED: Use 'supported_interfaces' instead.
+  optional string preferred_transport = 14 [deprecated = true];
+  // DEPRECATED: Use 'supported_interfaces' instead.
+  repeated AgentInterface additional_interfaces = 15 [deprecated = true];
   // The service provider of the agent.
   AgentProvider provider = 4;
   // The version of the agent.
