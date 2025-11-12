@@ -14,23 +14,18 @@ PROTO_DIR="$ROOT_DIR/specification/grpc"
 PROTO_FILE="$PROTO_DIR/a2a.proto"
 GOOGLEAPIS_DIR="${GOOGLEAPIS_DIR:-}"
 
+check_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Error: $1 not found on PATH" >&2
+    exit 1
+  fi
+}
+
 # Check dependencies
-if ! command -v protoc >/dev/null 2>&1; then
-  echo "Error: protoc not found on PATH" >&2
-  exit 1
-fi
-if ! command -v protoc-gen-openapi >/dev/null 2>&1; then
-  echo "Error: protoc-gen-openapi not found on PATH" >&2
-  exit 1
-fi
-if ! command -v yq >/dev/null 2>&1; then
-  echo "Error: yq not found on PATH" >&2
-  exit 1
-fi
-if ! command -v jq >/dev/null 2>&1; then
-  echo "Error: jq not found on PATH" >&2
-  exit 1
-fi
+check_command "protoc"
+check_command "protoc-gen-openapi"
+check_command "yq"
+check_command "jq"
 
 # Create temporary directory for intermediate files
 TEMP_DIR=$(mktemp -d)
