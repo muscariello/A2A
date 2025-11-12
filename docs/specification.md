@@ -124,11 +124,11 @@ In addition to the protocol requirements defined in this document, the file `spe
 
 **Change Control and Deprecation Lifecycle:**
 
-- Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available until the next major release.
+- Introduction: When a proto message or field is renamed, the new name is added while existing published names remain available, but marked deprecated, until the next major release.
 - Documentation: This specification MUST include a Migration Appendix (Appendix A) enumerating legacy→current name mappings with planned removal versions.
 - Anchors: Legacy documentation anchors MUST be preserved (as hidden HTML anchors) to avoid breaking inbound links.
 - SDK/Schema Aliases: SDKs and JSON Schemas SHOULD provide deprecated alias types/definitions to maintain backward compatibility.
-- Removal: A deprecated name SHOULD NOT be removed earlier than two minor versions after introduction of its replacement and MUST appear in at least one stable tagged release containing both forms.
+- Removal: A deprecated name SHOULD NOT be removed earlier than the next major version after introduction of its replacement.
 
 **Automated Generation:**
 
