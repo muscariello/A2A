@@ -167,6 +167,7 @@ dbc
 dcda
 dcfa
 dde
+deepwiki
 direnv
 docstrings
 documentai
