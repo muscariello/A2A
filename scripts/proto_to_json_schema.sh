@@ -32,13 +32,13 @@ TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 # Setup include paths for googleapis
-INCLUDE_FLAGS=("-I" "$PROTO_DIR")
+INCLUDE_FLAGS=("-I$PROTO_DIR")
 if [ -n "$GOOGLEAPIS_DIR" ]; then
-  INCLUDE_FLAGS+=("-I" "$GOOGLEAPIS_DIR")
+  INCLUDE_FLAGS+=("-I$GOOGLEAPIS_DIR")
 elif [ -d "$ROOT_DIR/third_party/googleapis" ]; then
-  INCLUDE_FLAGS+=("-I" "$ROOT_DIR/third_party/googleapis")
+  INCLUDE_FLAGS+=("-I$ROOT_DIR/third_party/googleapis")
 elif [ -d "/usr/local/include/google/api" ]; then
-  INCLUDE_FLAGS+=("-I" "/usr/local/include")
+  INCLUDE_FLAGS+=("-I/usr/local/include")
 fi
 
 # Verify googleapis annotations are available
