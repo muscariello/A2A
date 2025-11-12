@@ -1515,8 +1515,6 @@ This section provides illustrative examples of common A2A interactions across di
 
 **Scenario:** Client asks a question and receives a completed task response.
 
-#### HTTP Example
-
 **Request:**
 ```http
 POST /v1/message:send HTTP/1.1
@@ -1555,8 +1553,6 @@ Content-Type: application/a2a+json
 ### 6.2. Streaming Task Execution
 
 **Scenario:** Client requests a long-running task with real-time updates.
-
-#### HTTP SSE Example
 
 **Request:**
 ```http
