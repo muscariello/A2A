@@ -13,14 +13,6 @@ sudo apt-get install -y \
   unzip \
   wget
 
-# Install yq (YAML processor)
-echo "→ Installing yq..."
-YQ_VERSION="v4.44.3"
-YQ_BINARY="yq_linux_amd64"
-wget -qO /tmp/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}"
-sudo mv /tmp/yq /usr/local/bin/yq
-sudo chmod +x /usr/local/bin/yq
-
 # Install Protocol Buffers compiler
 echo "→ Installing protoc..."
 PROTOC_VERSION="28.3"
@@ -29,14 +21,14 @@ wget -qO /tmp/protoc.zip "https://github.com/protocolbuffers/protobuf/releases/d
 sudo unzip -q /tmp/protoc.zip -d /usr/local
 rm /tmp/protoc.zip
 
-# Install protoc-gen-openapi (gnostic)
-echo "→ Installing protoc-gen-openapi..."
-go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+# Install protoc-gen-jsonschema (bufbuild)
+echo "→ Installing protoc-gen-jsonschema..."
+go install github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-jsonschema@latest
 # Copy from wherever go installed it
-if [ -f "$HOME/go/bin/protoc-gen-openapi" ]; then
-  sudo cp "$HOME/go/bin/protoc-gen-openapi" /usr/local/bin/
-elif [ -f "$(go env GOPATH)/bin/protoc-gen-openapi" ]; then
-  sudo cp "$(go env GOPATH)/bin/protoc-gen-openapi" /usr/local/bin/
+if [ -f "$HOME/go/bin/protoc-gen-jsonschema" ]; then
+  sudo cp "$HOME/go/bin/protoc-gen-jsonschema" /usr/local/bin/
+elif [ -f "$(go env GOPATH)/bin/protoc-gen-jsonschema" ]; then
+  sudo cp "$(go env GOPATH)/bin/protoc-gen-jsonschema" /usr/local/bin/
 fi
 
 # Install googleapis proto files to third_party
@@ -59,8 +51,7 @@ pip install --no-cache-dir -r requirements-docs.txt
 echo ""
 echo "==> Verifying installations..."
 echo "protoc: $(protoc --version)"
-echo "protoc-gen-openapi: $(which protoc-gen-openapi)"
-echo "yq: $(yq --version)"
+echo "protoc-gen-jsonschema: $(which protoc-gen-jsonschema)"
 echo "jq: $(jq --version)"
 echo "python: $(python --version)"
 echo "go: $(go version)"
