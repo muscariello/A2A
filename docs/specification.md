@@ -619,10 +619,7 @@ Protocol bindings **MUST** map these elements to their native error representati
 
 #### 3.3.3. Asynchronous Processing
 
-- [`Task`](#411-task) objects represent asynchronous work units
-- Operations return immediately with task information
-- Clients must poll or stream to get completion status
-- Agents may continue processing after initial response
+A2A operations are designed for asynchronous task execution. Operations return immediately with either [`Task`](#411-task) objects or [`Message`](#414-message) objects, and when a Task is returned, processing continues in the background. Clients retrieve task updates through polling, streaming, or push notifications (see [Section 3.5](#35-task-update-delivery-mechanisms)). Agents MAY accept additional messages for tasks in non-terminal states to enable multi-turn interactions (see [Section 3.4](#34-multi-turn-interactions)).
 
 #### 3.3.4. Capability Validation
 
@@ -684,19 +681,65 @@ The A2A protocol supports several patterns for multi-turn interactions:
 - New tasks created within the same `contextId` can inherit context from previous interactions
 - Agents **SHOULD** leverage the shared `contextId` to provide contextually relevant responses
 
-### 3.5. Streaming and Real-Time Updates
+### 3.5. Task Update Delivery Mechanisms
 
-Real-time capabilities are provided through:
+The A2A protocol provides three complementary mechanisms for clients to receive updates about task progress and completion.
 
-- **Streaming Operations**: Stream Message (Section 3.1.2) and Subscribe to Task (Section 3.1.6)
-- **Event Types**: TaskStatusUpdateEvent (Section 4.2.1) and TaskArtifactUpdateEvent (Section 4.2.2)
-- **Push Notifications**: WebHook-based push notifications (Section 3.1.7 through 3.1.10 and Section 4.3) for asynchronous task updates. Regardless of the protocol binding being used by the agent, WebHook calls use plain HTTP and the JSON payloads as defined in the HTTP protocol binding.
+#### 3.5.1. Overview of Update Mechanisms
 
-#### Event Ordering
+**Polling (Get Task):**
 
-All streaming implementations MUST deliver events in the order they were generated. Events MUST NOT be reordered during transmission, regardless of protocol binding.
+- Client periodically calls Get Task ([Section 3.1.3](#313-get-task)) to check task status
+- Simple to implement, works with all protocol bindings
+- Higher latency, potential for unnecessary requests
+- Best for: Simple integrations, infrequent updates, clients behind restrictive firewalls
 
-This specification defines three standard protocol bindings: [JSON-RPC Protocol Binding](#9-json-rpc-protocol-binding), [gRPC Protocol Binding](#10-grpc-protocol-binding), and [HTTP+JSON/REST Protocol Binding](#11-httpjsonrest-protocol-binding). Alternative protocol bindings **MAY** be supported as long as they comply with the constraints defined in [Section 3 (A2A Protocol Operations)](#3-a2a-protocol-operations), [Section 4 (Protocol Data Model)](#4-protocol-data-model), and [Section 5 (Protocol Binding Requirements and Interoperability)](#5-protocol-binding-requirements-and-interoperability).
+**Streaming:**
+
+- Real-time delivery of events as they occur
+- Operations: Stream Message ([Section 3.1.2](#312-stream-message)) and Subscribe to Task ([Section 3.1.6](#316-subscribe-to-task))
+- Low latency, efficient for frequent updates
+- Requires persistent connection support
+- Best for: Interactive applications, real-time dashboards, live progress monitoring
+- Requires `AgentCard.capabilities.streaming` to be `true`
+
+**Push Notifications (WebHooks):**
+
+- Agent sends HTTP POST requests to client-registered endpoints when task state changes
+- Client does not maintain persistent connection
+- Asynchronous delivery, client must be reachable via HTTP
+- Best for: Server-to-server integrations, long-running tasks, event-driven architectures
+- Operations: Set ([Section 3.1.7](#317-set-push-notification-config)), Get ([Section 3.1.8](#318-get-push-notification-config)), List ([Section 3.1.9](#319-list-push-notification-configs)), Delete ([Section 3.1.10](#3110-delete-push-notification-config))
+- Event types: TaskStatusUpdateEvent ([Section 4.2.1](#421-taskstatusupdateevent)), TaskArtifactUpdateEvent ([Section 4.2.2](#422-taskartifactupdateevent)), WebHook payloads ([Section 4.3](#43-push-notification-payloads))
+- Requires `AgentCard.capabilities.pushNotifications` to be `true`
+- Regardless of the protocol binding being used by the agent, WebHook calls use plain HTTP and the JSON payloads as defined in the HTTP protocol binding
+
+#### 3.5.2. Streaming Event Delivery
+
+**Event Ordering:**
+
+All implementations MUST deliver events in the order they were generated. Events MUST NOT be reordered during transmission, regardless of protocol binding.
+
+**Multiple Streams Per Task:**
+
+An agent MAY serve multiple concurrent streams to one or more clients for the same task. This allows multiple clients (or the same client with multiple connections) to independently subscribe to and receive updates about a task's progress.
+
+When multiple streams are active for a task:
+
+- Events MUST be broadcast to all active streams for that task
+- Each stream MUST receive the same events in the same order
+- Closing one stream MUST NOT affect other active streams for the same task
+- The task lifecycle is independent of any individual stream's lifecycle
+
+This capability enables scenarios such as:
+
+- Multiple team members monitoring the same long-running task
+- A client reconnecting to a task after a network interruption by opening a new stream
+- Different applications or dashboards displaying real-time updates for the same task
+
+#### 3.5.3. Push Notification Delivery
+
+Push notifications are delivered via HTTP POST to client-registered webhook endpoints. The delivery semantics and reliability guarantees are defined in [Section 4.3](#43-push-notification-payloads).
 
 ### 3.6 Versioning
 
