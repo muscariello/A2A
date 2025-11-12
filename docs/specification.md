@@ -214,6 +214,7 @@ Similar to Send Message but with real-time streaming of updates during processin
 - [`UnsupportedOperationError`](#332-error-handling): Streaming is not supported by the agent (see [Capability Validation](#334-capability-validation)).
 - [`UnsupportedOperationError`](#332-error-handling): Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages.
 - [`ContentTypeNotSupportedError`](#332-error-handling): A Media Type provided in the request's message parts is not supported by the agent.
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
 
 **Behavior:**
 
@@ -221,7 +222,7 @@ The operation MUST establish a streaming connection for real-time updates. The s
 
 1. **Message-only stream:** If the agent returns a [`Message`](#414-message), the stream MUST contain exactly one message object and then close immediately. No task tracking or updates are provided.
 
-2. **Task lifecycle stream:** If the agent returns a [`Task`](#411-task), the stream MUST begin with the Task object, followed by zero or more [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) and [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects. The stream MUST close when the task reaches a terminal state (e.g. completed, failed, cancelled, rejected).
+2. **Task lifecycle stream:** If the agent returns a [`Task`](#411-task), the stream MUST begin with the Task object, followed by zero or more [`TaskStatusUpdateEvent`](#421-taskstatusupdateevent) or [`TaskArtifactUpdateEvent`](#422-taskartifactupdateevent) objects. The stream MUST close when the task reaches a terminal state (e.g. completed, failed, cancelled, rejected).
 
 The agent MAY return a Task for complex processing with status/artifact updates or MAY return a Message for direct streaming responses without task overhead. The implementation MUST provide immediate feedback on progress and intermediate results.
 
@@ -240,7 +241,7 @@ Retrieves the current state (including status, artifacts, and optionally history
 
 **Errors:**
 
-None specific to this operation beyond standard protocol errors.
+- [`TaskNotFoundError`](#332-error-handling): The task ID does not exist or is not accessible.
 
 #### 3.1.4. List Tasks
 
@@ -521,13 +522,8 @@ This wrapper allows streaming endpoints to return different types of updates thr
 The `historyLength` parameter appears in multiple operations and controls how much task history is returned in responses. This parameter follows consistent semantics across all operations:
 
 - **Unset/undefined**: No limit imposed; server returns its default amount of history (implementation-defined, may be all history)
-- **0**: No history should be returned; the `history` field SHOULD be omitted or empty
+- **0**: No history should be returned; the `history` field SHOULD be omitted
 - **> 0**: Return at most this many recent messages from the task's history
-
-**Server Requirements:**
-- Servers MAY return fewer history items than requested (e.g., if fewer items exist or for performance reasons)
-- Servers MUST NOT return more history items than requested when a positive limit is specified
-- When `historyLength` is 0, servers SHOULD omit the `history` field entirely rather than including an empty array
 
 #### 3.2.5. Metadata
 
