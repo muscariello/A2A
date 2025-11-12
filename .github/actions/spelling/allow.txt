@@ -223,6 +223,7 @@ inmemory
 ipynb
 iss
 jherr
+jqlang
 jti
 jwks
 konami
@@ -239,6 +240,7 @@ logtostderr
 marvin
 mcp
 mesop
+mikefarah
 mindsdb
 motherlode
 mozilla
@@ -317,6 +319,7 @@ webform
 webpage
 whatwg
 wikipedia
+winget
 wsgi
 wwwwwwww
 xxxxx
