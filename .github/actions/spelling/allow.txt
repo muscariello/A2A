@@ -27,9 +27,9 @@ Camry
 Cjava
 Cpzuhi
 DDo
-Debian
 DGT
 DHDe
+Debian
 Djq
 Dotnet
 EBFF
