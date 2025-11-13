@@ -198,14 +198,14 @@ The build script will:
 - Extract JSON schemas for documentation
 - Build the MkDocs site with all content
 
+</details>
+
 #### Troubleshooting
 
 - **protoc errors**: Ensure both `protoc` and the googleapis directory are properly configured
 - **yq/jq not found**: Ensure both tools are installed and in your `PATH`
 - **Python import errors**: Activate the virtual environment and ensure all requirements are installed
 - **Missing schemas**: Check that `protoc-gen-openapi` is in your `PATH` (run `go env GOPATH` to find Go bin directory)
-
-</details>
 
 ## Future Work
 
