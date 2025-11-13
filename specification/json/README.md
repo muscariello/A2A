@@ -4,10 +4,10 @@
 
 Generation pipeline:
 
-1. `protoc` + `protoc-gen-openapiv2` produce `specification/grpc/openapi/a2a.swagger.json`.
-2. `scripts/extract_json_schema.sh` extracts `definitions` into an ephemeral `a2a.json` (draft-07 schema bundle) copied to `docs/spec-json/a2a.json` for site publishing.
+1. `scripts/proto_to_json_schema.sh` converts proto → OpenAPI v3 → JSON Schema in a single atomic operation.
+2. The resulting `a2a.json` (draft-07 schema bundle) is copied to `docs/spec-json/a2a.json` for site publishing.
 
-Removed artifact: `a2a-openapi-schemas.json` (an intermediate OpenAPI schema expansion) previously committed during early tooling iteration has been deleted to avoid tracking generated content. Only source (`a2a.proto`) and scripts remain under version control.
+The build uses `protoc` with `protoc-gen-openapi` plugin, `yq` for YAML conversion, and `jq` for schema extraction. Only source (`a2a.proto`) and scripts remain under version control.
 
 The artifact is generated automatically in:
 
@@ -41,7 +41,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    protoc --version
    ```
 
-3. **Go programming language** (for protoc-gen-openapiv2 plugin)
+3. **Go programming language** (for protoc-gen-openapi plugin)
    ```powershell
    # Install via WinGet:
    winget install GoLang.Go
@@ -51,18 +51,25 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    go version
    ```
 
-4. **protoc-gen-openapiv2 plugin**
+4. **protoc-gen-openapi plugin**
    ```powershell
    # Install via Go (requires Go to be installed first):
-   go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+   go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 
    # Verify installation (should be in your Go bin directory):
-   protoc-gen-openapiv2 --version
-
-   # Or download binary from GitHub releases and add to PATH
+   protoc-gen-openapi --version
    ```
 
-5. **jq (JSON processor)**
+5. **yq (YAML processor)**
+   ```powershell
+   # Install via WinGet:
+   winget install mikefarah.yq
+
+   # Verify installation:
+   yq --version
+   ```
+
+6. **jq (JSON processor)**
    ```powershell
    # Install via WinGet:
    winget install jqlang.jq
@@ -71,7 +78,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    jq --version
    ```
 
-6. **Clone googleapis repository**
+7. **Clone googleapis repository**
    ```powershell
    # Clone to any location and set environment variable:
    git clone https://github.com/googleapis/googleapis.git C:\path\to\googleapis
@@ -81,7 +88,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    # You can open your profile for editing by running: notepad $PROFILE
    $env:GOOGLEAPIS_DIR = "C:\path\to\googleapis"
 
-7. **Python documentation dependencies**
+8. **Python documentation dependencies**
    ```powershell
    # Create and activate virtual environment:
    python -m venv .venv-docs
@@ -111,9 +118,9 @@ The build script will:
 ### Troubleshooting
 
 - **protoc errors**: Ensure both `protoc` and the googleapis directory are properly configured
-- **jq command line too long**: This is automatically handled by using temporary files
+- **yq/jq not found**: Ensure both tools are installed and in your PATH
 - **Python import errors**: Activate the virtual environment and ensure all requirements are installed
-- **Missing schemas**: Check that protoc-gen-openapiv2 is in your PATH
+- **Missing schemas**: Check that protoc-gen-openapi is in your PATH (run `go env GOPATH` to find Go bin directory)
 
 ## Future Work
 

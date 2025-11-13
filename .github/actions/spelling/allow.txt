@@ -160,6 +160,7 @@ cls
 coc
 codegen
 codeowner
+codespace
 crewai
 datamodel
 datapart
@@ -223,6 +224,7 @@ inmemory
 ipynb
 iss
 jherr
+jqlang
 jti
 jwks
 konami
@@ -238,7 +240,9 @@ lng
 logtostderr
 marvin
 mcp
+mcr
 mesop
+mikefarah
 mindsdb
 motherlode
 mozilla
@@ -267,6 +271,7 @@ prefecthq
 protoc
 protolint
 pyguide
+pylance
 pymdownx
 pypa
 pypackages
@@ -317,6 +322,7 @@ webform
 webpage
 whatwg
 wikipedia
+winget
 wsgi
 wwwwwwww
 xxxxx
