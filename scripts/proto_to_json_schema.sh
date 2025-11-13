@@ -56,11 +56,26 @@ if [ "$ANNOTATIONS_FOUND" != true ]; then
   exit 1
 fi
 
-# Step 1: Generate OpenAPI v3 YAML from proto
-echo "→ Generating OpenAPI v3 from proto..." >&2
+# Step 1: Pre-process proto and Generate OpenAPI v3
+echo "→ Cleaning proto comments and generating OpenAPI..." >&2
+
+# Define path for the cleaned proto in the temp directory
+CLEAN_PROTO_FILE="$TEMP_DIR/$(basename "$PROTO_FILE")"
+
+# Use sed to remove lines containing specific patterns:
+# 1. matches "// --8<--"
+# 2. matches "// protolint:"
+sed -e '/\/\/ --8<--/d' \
+    -e '/\/\/ protolint:/d' \
+    "$PROTO_FILE" > "$CLEAN_PROTO_FILE"
+
+# Add the temp dir to the include path so protoc finds the clean file context
+# We prepend it so it takes precedence over the original file
+INCLUDE_FLAGS=("-I$TEMP_DIR" "${INCLUDE_FLAGS[@]}")
+
 if ! protoc "${INCLUDE_FLAGS[@]}" --openapi_out "$TEMP_DIR" \
     --openapi_opt naming=json \
-    "$PROTO_FILE"; then
+    "$CLEAN_PROTO_FILE"; then
   echo "Error: protoc generation failed" >&2
   exit 1
 fi
