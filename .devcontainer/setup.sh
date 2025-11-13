@@ -32,15 +32,23 @@ rm /tmp/protoc.zip
 # Install protoc-gen-openapi (gnostic)
 echo "→ Installing protoc-gen-openapi..."
 go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
-sudo cp ~/go/bin/protoc-gen-openapi /usr/local/bin/
+# Copy from wherever go installed it
+if [ -f "$HOME/go/bin/protoc-gen-openapi" ]; then
+  sudo cp "$HOME/go/bin/protoc-gen-openapi" /usr/local/bin/
+elif [ -f "$(go env GOPATH)/bin/protoc-gen-openapi" ]; then
+  sudo cp "$(go env GOPATH)/bin/protoc-gen-openapi" /usr/local/bin/
+fi
 
-# Install googleapis proto files
+# Install googleapis proto files to third_party
 echo "→ Installing googleapis..."
-GOOGLEAPIS_DIR="/usr/local/include/googleapis"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="$(dirname "$SCRIPT_DIR")"
+GOOGLEAPIS_DIR="$WORKSPACE_DIR/third_party/googleapis"
 if [ ! -d "$GOOGLEAPIS_DIR" ]; then
-  sudo mkdir -p "$GOOGLEAPIS_DIR"
-  cd "$GOOGLEAPIS_DIR"
-  sudo git clone --depth 1 https://github.com/googleapis/googleapis.git .
+  mkdir -p "$WORKSPACE_DIR/third_party"
+  cd "$WORKSPACE_DIR/third_party"
+  git clone --depth 1 https://github.com/googleapis/googleapis.git
+  cd "$WORKSPACE_DIR"
 fi
 
 # Install Python dependencies for documentation
