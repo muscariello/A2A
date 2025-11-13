@@ -3429,7 +3429,7 @@ A2A Protocol Working Group, a2a-protocol@example.org
 
 **Author/Change controller:** A2A Protocol Working Group
 
-**Specification document:** Section 3.2.5 of the A2A Protocol Specification (https://a2a-protocol.org/specification)
+**Specification document:** Section 3.2.5 of the A2A Protocol Specification
 
 **Related information:**
 The A2A-Version header field indicates the A2A protocol version that the client is using. The value MUST be in the format `Major.Minor` (e.g., "0.3"). If the version is not supported by the agent, the agent returns a `VersionNotSupportedError`.
@@ -3449,7 +3449,7 @@ A2A-Version: 0.3
 
 **Author/Change controller:** A2A Protocol Working Group
 
-**Specification document:** Section 3.2.5 of the A2A Protocol Specification (https://a2a-protocol.org/specification)
+**Specification document:** Section 3.2.5 of the A2A Protocol Specification
 
 **Related information:**
 The A2A-Extensions header field contains a comma-separated list of extension URIs that the client wants to use for the request. Extensions allow agents to provide additional functionality beyond the core A2A specification while maintaining backward compatibility.
@@ -3465,7 +3465,7 @@ A2A-Extensions: https://example.com/extensions/geolocation/v1,https://standards.
 
 **Change controller:** A2A Protocol Working Group
 
-**Specification document:** Section 8.2 of the A2A Protocol Specification (https://a2a-protocol.org/specification)
+**Specification document:** Section 8.2 of the A2A Protocol Specification
 
 **Related information:**
 The `.well-known/agent-card.json` URI provides a standardized location for discovering an A2A agent's capabilities, supported protocols, authentication requirements, and available skills. The resource at this URI MUST return an AgentCard object as defined in Section 4.4.1 of the A2A specification.
