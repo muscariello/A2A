@@ -24,11 +24,9 @@ rm /tmp/protoc.zip
 # Install protoc-gen-jsonschema (bufbuild)
 echo "→ Installing protoc-gen-jsonschema..."
 go install github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-jsonschema@latest
-# Copy from wherever go installed it
-if [ -f "$HOME/go/bin/protoc-gen-jsonschema" ]; then
-  sudo cp "$HOME/go/bin/protoc-gen-jsonschema" /usr/local/bin/
-elif [ -f "$(go env GOPATH)/bin/protoc-gen-jsonschema" ]; then
-  sudo cp "$(go env GOPATH)/bin/protoc-gen-jsonschema" /usr/local/bin/
+go_bin_path="$(go env GOPATH)/bin/protoc-gen-jsonschema"
+if [ -f "$go_bin_path" ]; then
+  sudo cp "$go_bin_path" /usr/local/bin/
 fi
 
 # Install googleapis proto files to third_party
