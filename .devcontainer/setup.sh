@@ -34,13 +34,14 @@ echo "→ Installing protoc-gen-openapi..."
 go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 sudo cp ~/go/bin/protoc-gen-openapi /usr/local/bin/
 
-# Install googleapis proto files
+# Install googleapis proto files to third_party
 echo "→ Installing googleapis..."
-GOOGLEAPIS_DIR="/usr/local/include/googleapis"
+WORKSPACE_DIR="/workspaces/A2A"
+GOOGLEAPIS_DIR="$WORKSPACE_DIR/third_party/googleapis"
 if [ ! -d "$GOOGLEAPIS_DIR" ]; then
-  sudo mkdir -p "$GOOGLEAPIS_DIR"
-  cd "$GOOGLEAPIS_DIR"
-  sudo git clone --depth 1 https://github.com/googleapis/googleapis.git .
+  mkdir -p "$WORKSPACE_DIR/third_party"
+  cd "$WORKSPACE_DIR/third_party"
+  git clone --depth 1 https://github.com/googleapis/googleapis.git
 fi
 
 # Install Python dependencies for documentation
