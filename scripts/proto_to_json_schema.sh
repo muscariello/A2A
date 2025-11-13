@@ -23,8 +23,7 @@ check_command() {
 
 # Check dependencies
 check_command "protoc"
-check_command "protoc-gen-openapi"
-check_command "yq"
+check_command "protoc-gen-jsonschema"
 check_command "jq"
 
 # Create temporary directory for intermediate files
@@ -56,44 +55,38 @@ if [ "$ANNOTATIONS_FOUND" != true ]; then
   exit 1
 fi
 
-# Step 1: Generate OpenAPI v3 YAML from proto
-echo "→ Generating OpenAPI v3 from proto..." >&2
-if ! protoc "${INCLUDE_FLAGS[@]}" --openapi_out "$TEMP_DIR" \
-    --openapi_opt naming=json \
-    "$PROTO_FILE"; then
+# Step 1: Generate individual JSON Schema files with JSON field names (camelCase)
+echo "→ Generating JSON Schema from proto..." >&2
+if ! protoc "${INCLUDE_FLAGS[@]}" \
+    --jsonschema_out="$TEMP_DIR" \
+    --jsonschema_opt=target=json \
+    "$PROTO_FILE" 2>&1; then
   echo "Error: protoc generation failed" >&2
   exit 1
 fi
 
-OPENAPI_YAML="$TEMP_DIR/openapi.yaml"
-if [[ ! -f "$OPENAPI_YAML" ]]; then
-  echo "Error: No openapi.yaml produced" >&2
-  exit 1
-fi
-
-# Step 2: Convert YAML to JSON
-echo "→ Converting YAML to JSON..." >&2
-OPENAPI_JSON="$TEMP_DIR/openapi.json"
-yq -o=json '.' "$OPENAPI_YAML" > "$OPENAPI_JSON"
-
-# Step 3: Extract schemas and wrap in JSON Schema structure
-echo "→ Extracting schemas..." >&2
-SCHEMA_DEFS=$(jq 'if .components and .components.schemas then .components.schemas elif .definitions then .definitions else {} end' "$OPENAPI_JSON")
-
-if [[ -z "$SCHEMA_DEFS" || "$SCHEMA_DEFS" == "null" || "$SCHEMA_DEFS" == "{}" ]]; then
-  echo "Warning: No schemas found in OpenAPI document" >&2
-  SCHEMA_DEFS="{}"
-fi
-
-# Step 4: Create final JSON Schema bundle
+# Step 2: Bundle all schemas into a single file with cleaned names
 echo "→ Creating JSON Schema bundle..." >&2
-jq -n --argjson defs "$SCHEMA_DEFS" '{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  title: "A2A Protocol Schemas",
-  description: "Non-normative JSON Schema bundle extracted from proto definitions via OpenAPI.",
-  version: "v1",
-  definitions: $defs
-}' > "$OUTPUT"
+jq -s '
+  (.[0]."$schema") as $schema |
+  (reduce .[] as $item ({};
+    . + {
+      ($item["$id"] | sub("\\.jsonschema\\.json$"; "") | sub("^a2a\\.v1\\."; "") | sub("^google\\.protobuf\\."; "GoogleProtobuf")):
+      ($item | del(."$id", ."$schema") | walk(
+        if type == "object" and has("$ref") and (.["$ref"] | type == "string") then
+          .["$ref"] |= (sub("\\.jsonschema\\.json$"; "") | sub("^a2a\\.v1\\."; "") | sub("^google\\.protobuf\\."; "GoogleProtobuf") | "#/definitions/" + .)
+        else . end
+      ))
+    }
+  )) as $defs |
+  {
+    "$schema": $schema,
+    title: "A2A Protocol Schemas",
+    description: "Non-normative JSON Schema bundle extracted from proto definitions.",
+    version: "v1",
+    definitions: $defs
+  }
+' "$TEMP_DIR"/*.jsonschema.json > "$OUTPUT"
 
 # Count definitions
 DEF_COUNT=$(jq '.definitions | length' "$OUTPUT")
