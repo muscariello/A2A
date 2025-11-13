@@ -139,6 +139,8 @@ message Task {
   repeated Message history = 5;
   // protolint:enable REPEATED_FIELD_NAMES_PLURALIZED
   // A key/value object to store custom metadata about a task.
+  // Optional metadata for extensions. The key is an extension-specific
+  // identifier.
   google.protobuf.Struct metadata = 6;
 }
 // --8<-- [end:Task]
@@ -175,11 +177,11 @@ enum TaskState {
 // --8<-- [start:TaskStatus]
 // A container for the status of a task
 message TaskStatus {
-  // The current state of this task
+  // The current state of this task.
   TaskState state = 1 [(google.api.field_behavior) = REQUIRED];
   // A message associated with the status.
   Message message = 2;
-  // Timestamp when the status was recorded.
+  // ISO 8601 Timestamp when the status was recorded.
   // Example: "2023-10-27T10:00:00Z"
   google.protobuf.Timestamp timestamp = 3;
 }
@@ -191,8 +193,11 @@ message TaskStatus {
 // a structured data blob (i.e. JSON).
 message Part {
   oneof part {
+    // The string content of the text part.
     string text = 1;
+    // The file content, represented as either a URI or as base64-encoded bytes.
     FilePart file = 2;
+    // The structured data content.
     DataPart data = 3;
   }
   // Optional metadata associated with this part.
@@ -207,10 +212,14 @@ message Part {
 // from the file_with_uri source.
 message FilePart {
   oneof file {
+    // A URL pointing to the file's content.
     string file_with_uri = 1;
+    // The base64-encoded content of the file.
     bytes file_with_bytes = 2;
   }
+  // The media type of the file (e.g., "application/pdf").
   string media_type = 3;
+  // An optional name for the file (e.g., "document.pdf").
   string name = 4;
 }
 // --8<-- [end:FilePart]
@@ -218,6 +227,7 @@ message FilePart {
 // --8<-- [start:DataPart]
 // DataPart represents a structured blob. This is most commonly a JSON payload.
 message DataPart {
+  // The structured data content.
   google.protobuf.Struct data = 1 [(google.api.field_behavior) = REQUIRED];
 }
 // --8<-- [end:DataPart]
@@ -242,7 +252,7 @@ enum Role {
 // except the server decides if a task is created and whether to include the
 // task_id.
 message Message {
-  // The unique identifier (e.g. UUID)of the message. This is required and
+  // The unique identifier (e.g. UUID) of the message. This is required and
   // created by the message creator.
   string message_id = 1 [(google.api.field_behavior) = REQUIRED];
   // The context id of the message. This is optional and if set, the message
@@ -251,7 +261,7 @@ message Message {
   // The task id of the message. This is optional and if set, the message
   // will be associated with the given task.
   string task_id = 3;
-  // A role for the message.
+  // Identifies the sender of the message.
   Role role = 4 [(google.api.field_behavior) = REQUIRED];
   // protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
   // Parts is the container of the message content.
@@ -286,8 +296,8 @@ message Artifact {
 // --8<-- [end:Artifact]
 
 // --8<-- [start:TaskStatusUpdateEvent]
-// TaskStatusUpdateEvent is a delta even on a task indicating that a task
-// has changed.
+// An event sent by the agent to notify the client of a change in a task's
+// status.
 message TaskStatusUpdateEvent {
   // The id of the task that is changed
   string task_id = 1 [(google.api.field_behavior) = REQUIRED];
@@ -295,7 +305,7 @@ message TaskStatusUpdateEvent {
   string context_id = 2 [(google.api.field_behavior) = REQUIRED];
   // The new status of the task.
   TaskStatus status = 3 [(google.api.field_behavior) = REQUIRED];
-  // Whether this is the last status update expected for this task.
+  // If true, this is the final event in the stream for this interaction.
   bool final = 4 [(google.api.field_behavior) = REQUIRED];
   // Optional metadata to associate with the task update.
   google.protobuf.Struct metadata = 5;
@@ -306,15 +316,16 @@ message TaskStatusUpdateEvent {
 // TaskArtifactUpdateEvent represents a task delta where an artifact has
 // been generated.
 message TaskArtifactUpdateEvent {
-  // The id of the task for this artifact
+  // The id of the task for this artifact.
   string task_id = 1 [(google.api.field_behavior) = REQUIRED];
-  // The id of the context that this task belongs too
+  // The id of the context that this task belongs to.
   string context_id = 2 [(google.api.field_behavior) = REQUIRED];
-  // The artifact itself
+  // The artifact that was generated or updated.
   Artifact artifact = 3 [(google.api.field_behavior) = REQUIRED];
-  //  Whether this should be appended to a prior one produced
+  // If true, the content of this artifact should be appended to a previously
+  // sent artifact with the same ID.
   bool append = 4;
-  // Whether this represents the last part of an artifact
+  // If true, this is the final chunk of the artifact.
   bool last_chunk = 5;
   // Optional metadata associated with the artifact update.
   google.protobuf.Struct metadata = 6;
@@ -338,7 +349,7 @@ message PushNotificationConfig {
 // --8<-- [start:PushNotificationAuthenticationInfo]
 // Defines authentication details, used for push notifications.
 message AuthenticationInfo {
-  // Supported authentication schemes - e.g. Basic, Bearer, etc
+  // A list of supported authentication schemes (e.g., 'Basic', 'Bearer').
   repeated string schemes = 1 [(google.api.field_behavior) = REQUIRED];
   // Optional credentials
   string credentials = 2;
@@ -501,6 +512,8 @@ message AgentCardSignature {
 // --8<-- [end:AgentCardSignature]
 
 // --8<-- [start:TaskPushNotificationConfig]
+// A container associating a push notification configuration with a specific
+// task.
 message TaskPushNotificationConfig {
   // The resource name of the config.
   // Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
@@ -595,11 +608,16 @@ message MutualTlsSecurityScheme {
 // --8<-- [end:MutualTLSSecurityScheme]
 
 // --8<-- [start:OAuthFlows]
+// Defines the configuration for the supported OAuth 2.0 flows.
 message OAuthFlows {
   oneof flow {
+    // Configuration for the OAuth Authorization Code flow.
     AuthorizationCodeOAuthFlow authorization_code = 1;
+    // Configuration for the OAuth Client Credentials flow.
     ClientCredentialsOAuthFlow client_credentials = 2;
+    // Configuration for the OAuth Implicit flow.
     ImplicitOAuthFlow implicit = 3;
+    // Configuration for the OAuth Resource Owner Password flow.
     PasswordOAuthFlow password = 4;
   }
 }
@@ -657,6 +675,7 @@ message PasswordOAuthFlow {
 
 ///////////// Request Messages ///////////
 // --8<-- [start:SendMessageRequest]
+// Represents a request for the `message/send` method.
 message SendMessageRequest {
   // The message to send to the agent.
   Message request = 1
@@ -669,6 +688,7 @@ message SendMessageRequest {
 // --8<-- [end:SendMessageRequest]
 
 // --8<-- [start:GetTaskRequest]
+// Represents a request for the `tasks/get` method.
 message GetTaskRequest {
   // The resource name of the task.
   // Format: tasks/{task_id}
@@ -718,6 +738,7 @@ message ListTasksResponse {
 // --8<-- [end:ListTasksResponse]
 
 // --8<-- [start:CancelTaskRequest]
+// Represents a request for the `tasks/cancel` method.
 message CancelTaskRequest {
   // The resource name of the task to cancel.
   // Format: tasks/{task_id}
@@ -734,6 +755,7 @@ message GetTaskPushNotificationConfigRequest {
 // --8<-- [end:GetTaskPushNotificationConfigRequest]
 
 // --8<-- [start:DeleteTaskPushNotificationConfigRequest]
+// Represents a request for the `tasks/pushNotificationConfig/delete` method.
 message DeleteTaskPushNotificationConfigRequest {
   // The resource name of the config to delete.
   // Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
@@ -742,6 +764,7 @@ message DeleteTaskPushNotificationConfigRequest {
 // --8<-- [end:DeleteTaskPushNotificationConfigRequest]
 
 // --8<-- [start:SetTaskPushNotificationConfigRequest]
+// Represents a request for the `tasks/pushNotificationConfig/set` method.
 message SetTaskPushNotificationConfigRequest {
   // The parent task resource for this config.
   // Format: tasks/{task_id}
@@ -804,6 +827,8 @@ message StreamResponse {
 // --8<-- [end:StreamResponse]
 
 // --8<-- [start:ListTaskPushNotificationConfigResponse]
+// Represents a successful response for the `tasks/pushNotificationConfig/list`
+// method.
 message ListTaskPushNotificationConfigResponse {
   // The list of push notification configurations.
   repeated TaskPushNotificationConfig configs = 1;
