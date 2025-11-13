@@ -160,6 +160,7 @@ cls
 coc
 codegen
 codeowner
+codespace
 crewai
 datamodel
 datapart
