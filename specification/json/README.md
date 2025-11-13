@@ -18,13 +18,88 @@ The artifact is generated automatically in:
 
 Do **NOT** edit `a2a.json` manually. Update the proto instead. The file is transient and will be regenerated.
 
-## Building Documentation on Windows
+## Building the A2A JSON Artifact Locally
 
-To build the A2A documentation locally on Windows, you'll need several dependencies. This is useful for contributors who want to preview documentation changes before submitting pull requests.
+To build the `a2a.json` artifact locally, you'll need several dependencies depending on your operating system. This is useful for contributors who want to preview changes before submitting pull requests.
 
-### Windows Prerequisites
+<details>
+<summary>macOS/Linux</summary>
+
+#### Prerequisites for macOS/Linux
+
+1. **Homebrew (macOS) or apt-get (Debian/Ubuntu)**
+   - **macOS**: Install from [brew.sh](https://brew.sh/)
+   - **Debian/Ubuntu**: `apt-get` is pre-installed.
+
+2. **Python with pip**
+
+   ```bash
+   # Verify installation:
+   python3 --version
+   pip3 --version
+   ```
+
+3. **Core build tools (`protoc`, `go`, `yq`, `jq`)**
+   - **macOS**:
+
+     ```bash
+     brew install protobuf go yq jq
+     ```
+
+   - **Debian/Ubuntu**:
+
+     ```bash
+     sudo apt-get update && sudo apt-get install -y protobuf-compiler golang yq jq
+     ```
+
+4. **protoc-gen-openapi plugin**
+
+   ```bash
+   # Install via Go (requires Go to be installed first):
+   go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+   ```
+
+5. **Clone googleapis repository**
+
+   ```bash
+   # Clone to a location like $HOME/googleapis
+   git clone https://github.com/googleapis/googleapis.git $HOME/googleapis
+   export GOOGLEAPIS_DIR=$HOME/googleapis
+
+   # To persist this, add the export command to your shell profile (e.g., ~/.zshrc or ~/.bashrc)
+   echo 'export GOOGLEAPIS_DIR=$HOME/googleapis' >> ~/.bashrc
+   ```
+
+6. **Python documentation dependencies**
+
+   ```bash
+   # Create and activate virtual environment:
+   python3 -m venv .venv-docs
+   source .venv-docs/bin/activate
+
+   # Install requirements:
+   pip install -r requirements-docs.txt
+   ```
+
+#### Building the A2A JSON Artifact on macOS/Linux
+
+Once all prerequisites are installed:
+
+```bash
+# Run the build script:
+./scripts/build_docs.sh
+```
+
+This script handles all necessary steps to generate the `a2a.json` artifact and build the documentation site.
+</details>
+
+<details>
+<summary>Windows</summary>
+
+#### Windows Prerequisites
 
 1. **Python with pip** (for MkDocs)
+
    ```powershell
    # Install Python from python.org or via Microsoft Store
    # Verify installation:
@@ -33,6 +108,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    ```
 
 2. **Protocol Buffers compiler (protoc)**
+
    ```powershell
    # Install via WinGet (recommended):
    winget install Google.Protobuf
@@ -41,7 +117,8 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    protoc --version
    ```
 
-3. **Go programming language** (for protoc-gen-openapi plugin)
+3. **Go programming language** (for `protoc-gen-openapi` plugin)
+
    ```powershell
    # Install via WinGet:
    winget install GoLang.Go
@@ -51,7 +128,8 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    go version
    ```
 
-4. **protoc-gen-openapi plugin**
+4. **`protoc-gen-openapi` plugin**
+
    ```powershell
    # Install via Go (requires Go to be installed first):
    go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
@@ -61,6 +139,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    ```
 
 5. **yq (YAML processor)**
+
    ```powershell
    # Install via WinGet:
    winget install mikefarah.yq
@@ -70,6 +149,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    ```
 
 6. **jq (JSON processor)**
+
    ```powershell
    # Install via WinGet:
    winget install jqlang.jq
@@ -79,6 +159,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    ```
 
 7. **Clone googleapis repository**
+
    ```powershell
    # Clone to any location and set environment variable:
    git clone https://github.com/googleapis/googleapis.git C:\path\to\googleapis
@@ -89,6 +170,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    $env:GOOGLEAPIS_DIR = "C:\path\to\googleapis"
 
 8. **Python documentation dependencies**
+
    ```powershell
    # Create and activate virtual environment:
    python -m venv .venv-docs
@@ -98,7 +180,7 @@ To build the A2A documentation locally on Windows, you'll need several dependenc
    pip install -r requirements-docs.txt
    ```
 
-### Building the Documentation
+#### Building the A2A JSON Artifact on Windows
 
 Once all prerequisites are installed:
 
@@ -111,16 +193,19 @@ Once all prerequisites are installed:
 ```
 
 The build script will:
+
 - Generate OpenAPI schema from Protocol Buffer definitions
 - Extract JSON schemas for documentation
 - Build the MkDocs site with all content
 
-### Troubleshooting
+#### Troubleshooting
 
 - **protoc errors**: Ensure both `protoc` and the googleapis directory are properly configured
-- **yq/jq not found**: Ensure both tools are installed and in your PATH
+- **yq/jq not found**: Ensure both tools are installed and in your `PATH`
 - **Python import errors**: Activate the virtual environment and ensure all requirements are installed
-- **Missing schemas**: Check that protoc-gen-openapi is in your PATH (run `go env GOPATH` to find Go bin directory)
+- **Missing schemas**: Check that `protoc-gen-openapi` is in your `PATH` (run `go env GOPATH` to find Go bin directory)
+
+</details>
 
 ## Future Work
 
