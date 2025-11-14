@@ -4,7 +4,7 @@ The A2A Python SDK provides a comprehensive set of tools for building A2A-compli
 
 ## API Documentation
 
-For detailed API documentation, see the [Python SDK API Reference](python/api/index.html).
+For detailed API documentation, see the [Python SDK API Reference](python/api/).
 
 ## Quick Links
 
