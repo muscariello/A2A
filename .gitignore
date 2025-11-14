@@ -6,6 +6,8 @@ ENV/
 
 # Ephemeral schema artifacts (never commit)
 specification/json/a2a.json
+docs/spec-json/
+docs/spec-proto/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

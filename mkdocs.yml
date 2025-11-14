@@ -40,7 +40,10 @@ nav:
           - Interact with Server: tutorials/python/6-interact-with-server.md
           - Streaming & Multiturn: tutorials/python/7-streaming-and-multiturn.md
           - Next Steps: tutorials/python/8-next-steps.md
-  - Specification: specification.md
+  - Specification:
+      - Overview: specification.md
+      - JSON Schema: spec-json.md
+      - Protocol Buffers: spec-proto.md
   - SDK Reference:
       - sdk/index.md
       - Python: sdk/python.md
@@ -144,7 +147,6 @@ plugins:
   - macros
   - redirects:
       redirect_maps:
-        "spec-json.md": https://raw.githubusercontent.com/a2aproject/A2A/refs/heads/main/specification/json/a2a.json
         "specification/overview.md": "specification.md"
         "specification/agent-card.md": "specification.md#5-agent-discovery-the-agent-card"
         "specification/agent-to-agent-communication.md": "specification.md#6-protocol-data-objects"

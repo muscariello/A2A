@@ -3397,6 +3397,7 @@ AI agent platforms, agentic workflow systems, multi-agent collaboration tools, a
 **Fragment identifier considerations:** None
 
 **Additional information:**
+
 - **Deprecated alias names for this type:** None
 - **Magic number(s):** None
 - **File extension(s):** .a2a.json
@@ -3473,6 +3474,7 @@ The `.well-known/agent-card.json` URI provides a standardized location for disco
 **Status:** Permanent
 
 **Security considerations:**
+
 - The Agent Card MAY contain public information about an agent's capabilities and SHOULD NOT include sensitive credentials or internal implementation details
 - Implementations SHOULD support HTTPS to ensure authenticity and integrity of the Agent Card
 - Agent Cards MAY be signed using JSON Web Signatures (JWS) as specified in the AgentCardSignature object (Section 4.4.7)
