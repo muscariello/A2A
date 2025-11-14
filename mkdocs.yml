@@ -42,8 +42,8 @@ nav:
           - Next Steps: tutorials/python/8-next-steps.md
   - Specification:
       - Overview: specification.md
-      - JSON Schema: spec-json.md
       - Protocol Buffers: spec-proto.md
+      - JSON Schema: spec-json.md
   - SDK Reference:
       - sdk/index.md
       - Python: sdk/python.md
@@ -106,8 +106,6 @@ theme:
     - navigation.top
     - navigation.tracking
     - toc.follow
-    - versioning:
-        provider: mike
 
 # Extensions
 markdown_extensions:
@@ -126,6 +124,7 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
+      base_path: docs
       url_download: true
       dedent_subsections: true
   - pymdownx.superfences:
