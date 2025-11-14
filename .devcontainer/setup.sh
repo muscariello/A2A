@@ -29,6 +29,14 @@ if [ -f "$go_bin_path" ]; then
   sudo cp "$go_bin_path" /usr/local/bin/
 fi
 
+# Install buf CLI
+echo "→ Installing buf..."
+go install github.com/bufbuild/buf/cmd/buf@latest
+go_bin_path="$(go env GOPATH)/bin/buf"
+if [ -f "$go_bin_path" ]; then
+  sudo cp "$go_bin_path" /usr/local/bin/
+fi
+
 # Install googleapis proto files to third_party
 echo "→ Installing googleapis..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,6 +58,7 @@ echo ""
 echo "==> Verifying installations..."
 echo "protoc: $(protoc --version)"
 echo "protoc-gen-jsonschema: $(which protoc-gen-jsonschema)"
+echo "buf: $(buf --version 2>/dev/null || echo 'not found')"
 echo "jq: $(jq --version)"
 echo "python: $(python --version)"
 echo "go: $(go version)"
