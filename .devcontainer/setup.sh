@@ -10,14 +10,13 @@ sudo apt-get install -y \
   curl \
   git \
   jq \
-  unzip \
-  wget
+  unzip
 
 # Install Protocol Buffers compiler
 echo "→ Installing protoc..."
 PROTOC_VERSION="28.3"
 PROTOC_ZIP="protoc-${PROTOC_VERSION}-linux-x86_64.zip"
-wget -qO /tmp/protoc.zip "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"
+curl -fsSL -o /tmp/protoc.zip "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"
 sudo unzip -q /tmp/protoc.zip -d /usr/local
 rm /tmp/protoc.zip
 

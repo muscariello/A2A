@@ -42,8 +42,7 @@ nav:
           - Next Steps: tutorials/python/8-next-steps.md
   - Specification:
       - Overview: specification.md
-      - Protocol Buffers: spec-proto.md
-      - JSON Schema: spec-json.md
+      - Protocol Definition: spec.md
   - SDK Reference:
       - sdk/index.md
       - Python: sdk/python.md

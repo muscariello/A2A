@@ -67,17 +67,22 @@ fi
 
 # Step 2: Bundle all schemas into a single file with cleaned names
 echo "→ Creating JSON Schema bundle..." >&2
+
+# Check if any JSON files were generated
+JSON_FILES=("$TEMP_DIR"/*.json)
+if [ ! -f "${JSON_FILES[0]}" ]; then
+  echo "Error: No JSON schema files generated" >&2
+  exit 1
+fi
+
 jq -s '
-  (.[0]."$schema") as $schema |
+  (if .[0]."$schema" then .[0]."$schema" else "http://json-schema.org/draft-07/schema#" end) as $schema |
   (reduce .[] as $item ({};
-    . + {
-      ($item["$id"] | sub("\\.jsonschema\\.json$"; "") | sub("^a2a\\.v1\\."; "") | sub("^google\\.protobuf\\."; "GoogleProtobuf")):
-      ($item | del(."$id", ."$schema") | walk(
-        if type == "object" and has("$ref") and (.["$ref"] | type == "string") then
-          .["$ref"] |= (sub("\\.jsonschema\\.json$"; "") | sub("^a2a\\.v1\\."; "") | sub("^google\\.protobuf\\."; "GoogleProtobuf") | "#/definitions/" + .)
-        else . end
-      ))
-    }
+    if $item.title then
+      . + {($item.title): ($item | del(."$id"))}
+    else
+      .
+    end
   )) as $defs |
   {
     "$schema": $schema,
@@ -86,7 +91,7 @@ jq -s '
     version: "v1",
     definitions: $defs
   }
-' "$TEMP_DIR"/*.jsonschema.json > "$OUTPUT"
+' "$TEMP_DIR"/*.json > "$OUTPUT"
 
 # Count definitions
 DEF_COUNT=$(jq '.definitions | length' "$OUTPUT")
