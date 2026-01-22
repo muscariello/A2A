@@ -415,7 +415,9 @@ Removes a push notification configuration for a task.
 
 The operation MUST permanently remove the specified push notification configuration. No further notifications will be sent to the configured webhook after deletion. This operation MUST be idempotent - multiple deletions of the same config have the same effect.
 
-#### 3.1.11. Get Extended Agent Card {: #getextendedagentcard }
+<span id="getextendedagentcard"></span>
+
+#### 3.1.11. Get Extended Agent Card
 
 Retrieves a potentially more detailed version of the Agent Card after the client has authenticated. This endpoint is available only if `AgentCard.capabilities.extendedAgentCard` is `true`.
 
@@ -449,7 +451,9 @@ This section defines common parameter objects used across multiple operations.
 
 {{ proto_to_table("specification/a2a.proto", "SendMessageRequest") }}
 
-#### 3.2.2. SendMessageConfiguration {: #sendmessageconfiguration }
+<span id="sendmessageconfiguration"></span>
+
+#### 3.2.2. SendMessageConfiguration
 
 {{ proto_to_table("specification/a2a.proto", "SendMessageConfiguration") }}
 
@@ -755,63 +759,91 @@ The A2A protocol defines a canonical data model using Protocol Buffers. All prot
 
 ### 4.1. Core Objects
 
-#### 4.1.1. Task {: #task }
+<span id="task"></span>
+
+#### 4.1.1. Task
 
 {{ proto_to_table("specification/a2a.proto", "Task") }}
 
-#### 4.1.2. TaskStatus {: #taskstatus }
+<span id="taskstatus"></span>
+
+#### 4.1.2. TaskStatus
 
 {{ proto_to_table("specification/a2a.proto", "TaskStatus") }}
 
-#### 4.1.3. TaskState {: #taskstate }
+<span id="taskstate"></span>
+
+#### 4.1.3. TaskState
 
 {{ proto_enum_to_table("specification/a2a.proto", "TaskState") }}
 
-#### 4.1.4. Message {: #message }
+<span id="message"></span>
+
+#### 4.1.4. Message
 
 {{ proto_to_table("specification/a2a.proto", "Message") }}
 
-#### 4.1.5. Role {: #role }
+<span id="role"></span>
+
+#### 4.1.5. Role
 
 {{ proto_enum_to_table("specification/a2a.proto", "Role") }}
 
-#### 4.1.6. Part {: #part }
+<span id="part"></span>
+
+#### 4.1.6. Part
 
 {{ proto_to_table("specification/a2a.proto", "Part") }}
 
-#### 4.1.7. FilePart {: #filepart }
+<span id="filepart"></span>
+
+#### 4.1.7. FilePart
 
 {{ proto_to_table("specification/a2a.proto", "FilePart") }}
 
-#### 4.1.8. DataPart {: #datapart }
+<span id="datapart"></span>
+
+#### 4.1.8. DataPart
 
 {{ proto_to_table("specification/a2a.proto", "DataPart") }}
 
-#### 4.1.9. Artifact {: #artifact }
+<span id="artifact"></span>
+
+#### 4.1.9. Artifact
 
 {{ proto_to_table("specification/a2a.proto", "Artifact") }}
 
 ### 4.2. Streaming Events
 
-#### 4.2.1. TaskStatusUpdateEvent {: #taskstatusupdateevent }
+<span id="taskstatusupdateevent"></span>
+
+#### 4.2.1. TaskStatusUpdateEvent
 
 {{ proto_to_table("specification/a2a.proto", "TaskStatusUpdateEvent") }}
 
-#### 4.2.2. TaskArtifactUpdateEvent {: #taskartifactupdateevent }
+<span id="taskartifactupdateevent"></span>
+
+#### 4.2.2. TaskArtifactUpdateEvent
 
 {{ proto_to_table("specification/a2a.proto", "TaskArtifactUpdateEvent") }}
 
 ### 4.3. Push Notification Objects
 
-#### 4.3.1. PushNotificationConfig {: #pushnotificationconfig }
+<span id="pushnotificationconfig"></span>
+
+#### 4.3.1. PushNotificationConfig
 
 {{ proto_to_table("specification/a2a.proto", "PushNotificationConfig") }}
 
-#### 4.3.2. AuthenticationInfo {: #authenticationinfo }
+<span id="authenticationinfo"></span>
+
+#### 4.3.2. AuthenticationInfo
 
 {{ proto_to_table("specification/a2a.proto", "PushNotificationAuthenticationInfo") }}
 
-#### 4.3.3. Push Notification Payload {: #pushnotificationpayload }
+<span id="pushnotificationpayload"></span>
+
+#### 4.3.3. Push Notification Payload
 
 When a task update occurs, the agent sends an HTTP POST request to the configured webhook URL. The payload uses the same [`StreamResponse`](#323-stream-response) format as streaming operations, allowing push notifications to deliver the same event types as real-time streams.
 
@@ -862,81 +894,119 @@ For detailed security guidance on push notifications, see [Section 13.2 Push Not
 
 ### 4.4. Agent Discovery Objects
 
-#### 4.4.1. AgentCard {: #agentcard }
+<span id="agentcard"></span>
+
+#### 4.4.1. AgentCard
 
 {{ proto_to_table("specification/a2a.proto", "AgentCard") }}
 
-#### 4.4.2. AgentProvider {: #agentprovider }
+<span id="agentprovider"></span>
+
+#### 4.4.2. AgentProvider
 
 {{ proto_to_table("specification/a2a.proto", "AgentProvider") }}
 
-#### 4.4.3. AgentCapabilities {: #agentcapabilities }
+<span id="agentcapabilities"></span>
+
+#### 4.4.3. AgentCapabilities
 
 {{ proto_to_table("specification/a2a.proto", "AgentCapabilities") }}
 
-#### 4.4.4. AgentExtension {: #agentextension }
+<span id="agentextension"></span>
+
+#### 4.4.4. AgentExtension
 
 {{ proto_to_table("specification/a2a.proto", "AgentExtension") }}
 
-#### 4.4.5. AgentSkill {: #agentskill }
+<span id="agentskill"></span>
+
+#### 4.4.5. AgentSkill
 
 {{ proto_to_table("specification/a2a.proto", "AgentSkill") }}
 
-#### 4.4.6. AgentInterface {: #agentinterface }
+<span id="agentinterface"></span>
+
+#### 4.4.6. AgentInterface
 
 {{ proto_to_table("specification/a2a.proto", "AgentInterface") }}
 
-#### 4.4.7. AgentCardSignature {: #agentcardsignature }
+<span id="agentcardsignature"></span>
+
+#### 4.4.7. AgentCardSignature
 
 {{ proto_to_table("specification/a2a.proto", "AgentCardSignature") }}
 
 ### 4.5. Security Objects
 
-#### 4.5.1. SecurityScheme {: #securityscheme }
+<span id="securityscheme"></span>
+
+#### 4.5.1. SecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "SecurityScheme") }}
 
-#### 4.5.2. APIKeySecurityScheme {: #apikeysecurityscheme }
+<span id="apikeysecurityscheme"></span>
+
+#### 4.5.2. APIKeySecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "APIKeySecurityScheme") }}
 
-#### 4.5.3. HTTPAuthSecurityScheme {: #httpauthsecurityscheme }
+<span id="httpauthsecurityscheme"></span>
+
+#### 4.5.3. HTTPAuthSecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "HTTPAuthSecurityScheme") }}
 
-#### 4.5.4. OAuth2SecurityScheme {: #oauth2securityscheme }
+<span id="oauth2securityscheme"></span>
+
+#### 4.5.4. OAuth2SecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "OAuth2SecurityScheme") }}
 
-#### 4.5.5. OpenIdConnectSecurityScheme {: #openidconnectsecurityscheme }
+<span id="openidconnectsecurityscheme"></span>
+
+#### 4.5.5. OpenIdConnectSecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "OpenIdConnectSecurityScheme") }}
 
-#### 4.5.6. MutualTLSSecurityScheme {: #mutualtlssecurityscheme }
+<span id="mutualtlssecurityscheme"></span>
+
+#### 4.5.6. MutualTLSSecurityScheme
 
 {{ proto_to_table("specification/a2a.proto", "MutualTlsSecurityScheme") }}
 
-#### 4.5.7. OAuthFlows {: #oauthflows }
+<span id="oauthflows"></span>
+
+#### 4.5.7. OAuthFlows
 
 {{ proto_to_table("specification/a2a.proto", "OAuthFlows") }}
 
-#### 4.5.8. AuthorizationCodeOAuthFlow {: #authorizationcodeoauthflow }
+<span id="authorizationcodeoauthflow"></span>
+
+#### 4.5.8. AuthorizationCodeOAuthFlow
 
 {{ proto_to_table("specification/a2a.proto", "AuthorizationCodeOAuthFlow") }}
 
-#### 4.5.9. ClientCredentialsOAuthFlow {: #clientcredentialsoauthflow }
+<span id="clientcredentialsoauthflow"></span>
+
+#### 4.5.9. ClientCredentialsOAuthFlow
 
 {{ proto_to_table("specification/a2a.proto", "ClientCredentialsOAuthFlow") }}
 
-#### 4.5.10. DeviceCodeOAuthFlow {: #devicecodeoauthflow }
+<span id="devicecodeoauthflow"></span>
+
+#### 4.5.10. DeviceCodeOAuthFlow
 
 {{ proto_to_table("specification/a2a.proto", "DeviceCodeOAuthFlow") }}
 
-#### 4.5.11. Security {: #security }
+<span id="security"></span>
+
+#### 4.5.11. Security
 
 {{ proto_to_table("specification/a2a.proto", "Security") }}
 
-#### 4.5.12. StringList {: #stringlist }
+<span id="stringlist"></span>
+
+#### 4.5.12. StringList
 
 {{ proto_to_table("specification/a2a.proto", "StringList") }}
 
@@ -2581,7 +2651,9 @@ Retrieves the agent's extended capability card after authentication.
 
 ### 10.5. gRPC-Specific Data Types
 
-#### 10.5.1. TaskPushNotificationConfig {: #taskpushnotificationconfig }
+<span id="taskpushnotificationconfig"></span>
+
+#### 10.5.1. TaskPushNotificationConfig
 
 Resource wrapper for push notification configurations. This is a gRPC-specific type used in resource-oriented operations to provide the full resource name along with the configuration data.
 
